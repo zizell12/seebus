@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build:
+      context: .
+    container_name: seebus_frontend
+    restart: always
+    environment:
+      - VITE_API_URL=http://seebus.local/api
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
