@@ -47,7 +47,9 @@ export default function SearchForm() {
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-4 md:p-5">
       {error && <p className="text-sm text-brand-red mb-3">{error}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+
+      {/* 6 kolom: Dari, tombol swap, Tujuan, Tanggal, Penumpang, tombol Cari Bus — semua sejajar 1 baris di layar besar */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-3 items-end">
         <Field label={t.search.dari} icon={<MapPin className="w-4 h-4" />}>
           <select
             className="w-full outline-none text-sm text-navy-900 bg-transparent"
@@ -99,11 +101,11 @@ export default function SearchForm() {
             onChange={(penumpang) => setForm({ ...form, penumpang })}
           />
         </div>
-      </div>
 
-      <button type="submit" className="btn-primary w-full md:w-auto mt-4">
-        {t.search.cariBus}
-      </button>
+        <button type="submit" className="btn-primary h-[46px] px-6 whitespace-nowrap">
+          {t.search.cariBus}
+        </button>
+      </div>
     </form>
   )
 }

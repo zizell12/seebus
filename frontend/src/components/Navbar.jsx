@@ -79,12 +79,8 @@ export default function Navbar() {
             )}
           </div>
 
-          <Link to="/masuk" className="text-navy-900 font-semibold text-sm px-2 py-2 hover:underline">
-            {t.nav.masuk}
-          </Link>
-          <Link to="/daftar" className="btn-primary text-sm">
-            {t.nav.daftar}
-          </Link>
+          {/* Tombol Masuk/Daftar dihapus — situs publik ini tidak butuh login,
+              cuma admin yang login lewat halaman admin panel terpisah nanti. */}
         </div>
 
         <button className="md:hidden text-navy-900" onClick={() => setOpen(!open)} aria-label="Buka menu">
@@ -117,11 +113,6 @@ export default function Navbar() {
                 {l.toUpperCase()}
               </button>
             ))}
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Link to="/masuk" className="btn-outline flex-1 text-center text-sm" onClick={() => setOpen(false)}>{t.nav.masuk}</Link>
-            <Link to="/daftar" className="btn-primary flex-1 text-center text-sm" onClick={() => setOpen(false)}>{t.nav.daftar}</Link>
           </div>
         </div>
       )}

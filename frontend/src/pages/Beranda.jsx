@@ -32,15 +32,19 @@ export default function Beranda() {
         className="relative bg-navy-900 bg-cover bg-center"
         style={{ backgroundImage: "linear-gradient(rgba(11,30,77,0.85), rgba(11,30,77,0.75)), url('https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?w=1600')" }}
       >
-        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-14 pb-24 text-left">
-          <h1 className="text-white text-3xl md:text-4xl font-extrabold mb-3 max-w-2xl">
-            {t.hero.title}
-          </h1>
-          <p className="text-white/80 max-w-xl mb-10 text-sm md:text-base">
-            {t.hero.subtitle}
-          </p>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-14 pb-24">
+          {/* Judul & subjudul rata kiri */}
+          <div className="text-left">
+            <h1 className="text-white text-3xl md:text-4xl font-extrabold mb-3 max-w-2xl">
+              {t.hero.title}
+            </h1>
+            <p className="text-white/80 max-w-xl mb-10 text-sm md:text-base">
+              {t.hero.subtitle}
+            </p>
+          </div>
 
-          <div className="max-w-5xl text-left">
+          {/* Form pencarian tetap di tengah, terpisah dari alignment judul di atasnya */}
+          <div className="max-w-5xl mx-auto">
             <SearchForm />
           </div>
         </div>
