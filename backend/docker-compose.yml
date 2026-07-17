@@ -12,8 +12,8 @@ services:
       - data_seebus_storage:/var/www/storage/framework
       - ./src/storage:/var/www/storage
     networks:
-      - lalapo
-      - proxy
+      - seebus_net
+      - proxy_net
 
   webserver:
     image: nginx:alpine
@@ -28,8 +28,8 @@ services:
     depends_on:
       - app
     networks:
-      - lalapo
-      - proxy
+      - seebus_net
+      - proxy_net
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.seebus.rule=Host(`seebus.local`)"
@@ -40,7 +40,9 @@ volumes:
   data_seebus_storage:
 
 networks:
-  lalapo:
+  seebus_net:
     external: true
-  proxy:
+    name: ${DOCKER_NETWORK:-lalapo}
+  proxy_net:
     external: true
+    name: ${PROXY_NETWORK:-proxy}
