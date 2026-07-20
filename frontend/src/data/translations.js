@@ -57,6 +57,18 @@ export const translations = {
       langkah3Judul: '3. Bayar',
       langkah3Desk: 'Selesaikan pembayaran lewat metode yang tersedia.',
     },
+    footer: {
+      deskripsi: 'Transportasi bus terbaik di Indonesia. Perjalanan mudah, cepat, dan aman.',
+      fiturJudul: 'FITUR',
+      tentangKami: 'Tentang Kami',
+      bookingTiket: 'Booking Tiket',
+      kebijakanPerjalanan: 'Kebijakan Perjalanan',
+      platformJudul: 'PLATFORM',
+      hubungiKami: 'Hubungi Kami',
+      pusatBantuan: 'Pusat Bantuan',
+      syaratKetentuan: 'Syarat & Ketentuan',
+      copyright: '©2026 SeeBus. All Rights Reserved.',
+    },
   },
 
   en: {
@@ -113,6 +125,18 @@ export const translations = {
       langkah2Desk: 'Choose your bus, seat, and fill in passenger details.',
       langkah3Judul: '3. Pay',
       langkah3Desk: 'Complete payment using an available method.',
+    },
+    footer: {
+      deskripsi: 'The best bus transportation in Indonesia. Easy, fast, and safe travel.',
+      fiturJudul: 'FEATURES',
+      tentangKami: 'About Us',
+      bookingTiket: 'Book Ticket',
+      kebijakanPerjalanan: 'Travel Policy',
+      platformJudul: 'PLATFORM',
+      hubungiKami: 'Contact Us',
+      pusatBantuan: 'Help Center',
+      syaratKetentuan: 'Terms & Conditions',
+      copyright: '©2026 SeeBus. All Rights Reserved.',
     },
   },
 }
