@@ -2,13 +2,11 @@ import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { Menu, X, Bus, ChevronDown } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
-
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { lang, setLang, t } = useLanguage()
   const [langOpen, setLangOpen] = useState(false)
   const langRef = useRef(null)
-
   useEffect(() => {
     function handleClickOutside(e) {
       if (langRef.current && !langRef.current.contains(e.target)) {
@@ -18,14 +16,24 @@ export default function Navbar() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
   const menu = [
-    { to: '/', label: t.nav.beranda },
-    { to: '/wilayah', label: t.nav.wilayah },
-    { to: '/perusahaan', label: t.nav.perusahaan },
-    { to: '/hubungi-kami', label: t.nav.hubungiKami },
+    {
+      to: '/',
+      label: t.nav.beranda,
+    },
+    {
+      to: '/wilayah',
+      label: t.nav.wilayah,
+    },
+    {
+      to: '/perusahaan',
+      label: t.nav.perusahaan,
+    },
+    {
+      to: '/hubungi-kami',
+      label: t.nav.hubungiKami,
+    },
   ]
-
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
@@ -41,11 +49,7 @@ export default function Navbar() {
               to={m.to}
               end={m.to === '/'}
               className={({ isActive }) =>
-                `text-sm font-medium pb-1 border-b-2 transition-colors ${
-                  isActive
-                    ? 'text-navy-900 border-brand-red'
-                    : 'text-gray-500 border-transparent hover:text-navy-900'
-                }`
+                `text-sm font-medium pb-1 border-b-2 transition-colors ${isActive ? 'text-navy-900 border-brand-red' : 'text-gray-500 border-transparent hover:text-navy-900'}`
               }
             >
               {m.label}
@@ -54,7 +58,6 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
-          {/* Tombol ganti bahasa */}
           <div className="relative" ref={langRef}>
             <button
               onClick={() => setLangOpen((o) => !o)}
@@ -67,10 +70,11 @@ export default function Navbar() {
                 {['id', 'en'].map((l) => (
                   <button
                     key={l}
-                    onClick={() => { setLang(l); setLangOpen(false) }}
-                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
-                      lang === l ? 'font-bold text-brand-red' : 'text-navy-900'
-                    }`}
+                    onClick={() => {
+                      setLang(l)
+                      setLangOpen(false)
+                    }}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${lang === l ? 'font-bold text-brand-red' : 'text-navy-900'}`}
                   >
                     {l === 'id' ? 'Indonesia' : 'English'}
                   </button>
@@ -78,9 +82,6 @@ export default function Navbar() {
               </div>
             )}
           </div>
-
-          {/* Tombol Masuk/Daftar dihapus — situs publik ini tidak butuh login,
-              cuma admin yang login lewat halaman admin panel terpisah nanti. */}
         </div>
 
         <button className="md:hidden text-navy-900" onClick={() => setOpen(!open)} aria-label="Buka menu">
@@ -106,9 +107,7 @@ export default function Navbar() {
               <button
                 key={l}
                 onClick={() => setLang(l)}
-                className={`flex-1 text-sm py-1.5 rounded-lg border ${
-                  lang === l ? 'bg-navy-900 text-white' : 'text-navy-900'
-                }`}
+                className={`flex-1 text-sm py-1.5 rounded-lg border ${lang === l ? 'bg-navy-900 text-white' : 'text-navy-900'}`}
               >
                 {l.toUpperCase()}
               </button>

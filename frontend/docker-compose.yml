@@ -9,5 +9,14 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    ports:
-      - "5173:5173"
+    networks:
+      - proxy_net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seebus_frontend.rule=Host(`seebus.local`) && !PathPrefix(`/api`)"
+      - "traefik.http.services.seebus_frontend.loadbalancer.server.port=5173"
+
+networks:
+  proxy_net:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}

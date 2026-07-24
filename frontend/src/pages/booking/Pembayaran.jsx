@@ -1,100 +1,124 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
+import { MapPin } from 'lucide-react'
+import SearchForm from '../../components/SearchForm'
+import BookingSummaryBar from '../../components/BookingSummaryBar'
 import { useBooking } from '../../context/BookingContext'
-
+import { api } from '../../utils/api'
+import backgrounddb from '../../assets/background-db.png'
 export default function Pembayaran() {
-  const { booking, setPayment } = useBooking()
   const navigate = useNavigate()
-  const [showPaypal, setShowPaypal] = useState(false)
-  const [processing, setProcessing] = useState(false)
-
-  const bus = booking.selectedBus
-  const nomorKursi = booking.selectedSeats?.nomor || []
-
-  if (!bus || booking.passengers.length === 0) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-gray-500 mb-4">Data pemesanan belum lengkap.</p>
-        <button className="btn-primary" onClick={() => navigate('/')}>Ke Beranda</button>
-      </div>
-    )
+  const { booking, setPayment } = useBooking()
+  const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id } = booking
+  const totalHarga = selectedBus ? selectedBus.harga * passengers.length : 0
+  const totalUsd = (totalHarga / 15000).toFixed(2)
+  if (!selectedBus || !passengers.length || !booking_id) {
+    navigate('/pencarian')
+    return null
   }
-
-  const total = bus.harga * booking.passengers.length
-
-  // Simulasi konfirmasi pembayaran PayPal.
-  // Implementasi asli: gunakan PayPal JS SDK (paypal.Buttons) yang membuka
-  // popup resmi PayPal, lalu kirim order id ke backend Laravel (POST /api/booking
-  // untuk buat booking, lalu POST /api/pembayaran/paypal/capture untuk verifikasi).
-  const konfirmasiPaypal = () => {
-    setProcessing(true)
-    setTimeout(() => {
-      setPayment({ metode: 'PayPal', status: 'success' })
-      setProcessing(false)
-      setShowPaypal(false)
-      navigate('/pemesanan/berhasil')
-    }, 1500)
-  }
-
   return (
-    <div className="max-w-2xl mx-auto px-4 md:px-6 py-10">
-      <h1 className="text-xl md:text-2xl font-bold text-navy-900 mb-6">Pembayaran</h1>
-
-      <div className="card mb-6">
-        <h3 className="font-bold text-navy-900 mb-3">Ringkasan Pesanan</h3>
-        <div className="text-sm text-gray-500 space-y-1.5">
-          <div className="flex justify-between"><span>Rute</span><span className="text-navy-900 font-medium">{bus.dari} → {bus.tujuan}</span></div>
-          <div className="flex justify-between"><span>Bus</span><span className="text-navy-900 font-medium">{bus.operator} · {bus.kategori}</span></div>
-          <div className="flex justify-between"><span>Kursi</span><span className="text-navy-900 font-medium">{nomorKursi.join(', ')}</span></div>
-          <div className="flex justify-between"><span>Jumlah Penumpang</span><span className="text-navy-900 font-medium">{booking.passengers.length}</span></div>
-          <div className="border-t my-2" />
-          <div className="flex justify-between text-base">
-            <span className="font-bold text-navy-900">Total Bayar</span>
-            <span className="font-extrabold text-brand-red">Rp {total.toLocaleString('id-ID')}</span>
+    <div>
+      <section
+        className="relative bg-navy-900 bg-cover bg-center"
+        style={{
+          backgroundImage: `linear-gradient(rgba(11,30,77,0.85), rgba(11,30,77,0.75)), url(${backgrounddb})`,
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 text-center">
+          <h1 className="text-white text-xl md:text-2xl font-bold mb-6">SeeBus - Pesan Mudah, Perjalanan Nyaman</h1>
+          <div className="max-w-5xl mx-auto">
+            <SearchForm />
           </div>
         </div>
+      </section>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
+        <p className="text-xs text-gray-400">Beranda &gt; Pembayaran</p>
       </div>
 
-      <div className="card">
-        <h3 className="font-bold text-navy-900 mb-3">Metode Pembayaran</h3>
-        <button
-          onClick={() => setShowPaypal(true)}
-          className="w-full border-2 border-[#003087] rounded-lg py-3 font-bold text-[#003087] flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors"
-        >
-          Bayar dengan PayPal
-        </button>
-      </div>
+      <BookingSummaryBar />
 
-      {showPaypal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl w-full max-w-sm p-6 relative">
-            <button
-              onClick={() => setShowPaypal(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-              aria-label="Tutup"
-            >
-              ✕
-            </button>
-            <div className="text-center mb-5">
-              <p className="text-[#003087] font-extrabold text-2xl italic">PayPal</p>
+      <div className="max-w-md mx-auto px-4 md:px-6 pb-14">
+        <div className="card">
+          <h2 className="font-bold text-navy-900 mb-4">Rincian Pemesanan</h2>
+
+          <div className="flex items-start gap-2 text-sm text-navy-900 mb-3">
+            <MapPin className="w-4 h-4 text-brand-red mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium">
+                {search.dari} → {search.tujuan}
+              </p>
+              <p className="text-xs text-gray-400">
+                {new Date(search.tanggal).toLocaleDateString('id-ID', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+                , {selectedBus.jamBerangkat} - {selectedBus.jamTiba}
+              </p>
             </div>
-            <p className="text-sm text-gray-500 text-center mb-4">
-              Konfirmasi pembayaran sebesar <span className="font-bold text-navy-900">Rp {total.toLocaleString('id-ID')}</span>
-            </p>
-            <button
-              onClick={konfirmasiPaypal}
-              disabled={processing}
-              className="w-full bg-[#0070ba] text-white font-bold py-2.5 rounded-full hover:bg-[#005ea6] transition-colors disabled:opacity-60"
-            >
-              {processing ? 'Memproses...' : 'Konfirmasi & Bayar'}
-            </button>
-            <p className="text-[10px] text-gray-400 text-center mt-3">
-              *Ini adalah simulasi. Booking belum tersimpan ke database — perlu endpoint
-              POST /api/booking dulu untuk itu.
-            </p>
           </div>
+
+          <div className="text-sm text-navy-900 mb-4 pb-4 border-b border-gray-100">
+            <p className="font-medium">
+              Kursi {selectedSeats.nomor.join(', ')} ({selectedBus.kelas})
+            </p>
+            <p className="text-xs text-gray-400">{passengers.length} Penumpang</p>
+          </div>
+
+          <div className="flex justify-between text-sm text-gray-600 mb-1">
+            <span>Harga</span>
+            <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
+          </div>
+          <div className="flex justify-between font-bold text-navy-900 mb-6">
+            <span>Total</span>
+            <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
+          </div>
+
+          <PayPalScriptProvider
+            options={{
+              'client-id': 'sb',
+              currency: 'USD',
+            }}
+          >
+            <PayPalButtons
+              style={{
+                layout: 'vertical',
+                color: 'blue',
+                label: 'paypal',
+              }}
+              createOrder={async () => {
+                const response = await api.createPaypalOrder({ booking_id })
+                return response.data.id || response.data.orderID || response.data?.id
+              }}
+              onApprove={async (data) => {
+                try {
+                  await api.capturePaypalOrder({ booking_id, orderID: data.orderID })
+                  setPayment({
+                    metode: 'paypal',
+                    status: 'success',
+                  })
+                  navigate('/pemesanan/berhasil')
+                } catch (error) {
+                  console.error(error)
+                  setPayment({
+                    metode: 'paypal',
+                    status: 'failed',
+                  })
+                }
+              }}
+              onError={() => {
+                setPayment({
+                  metode: 'paypal',
+                  status: 'failed',
+                })
+              }}
+            />
+          </PayPalScriptProvider>
         </div>
-      )}
+      </div>
     </div>
   )
 }

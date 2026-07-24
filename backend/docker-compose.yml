@@ -32,7 +32,7 @@ services:
       - proxy_net
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.seebus.rule=Host(`seebus.local`)"
+      - "traefik.http.routers.seebus.rule=Host(`seebus.local`) && PathPrefix(`/api`)"
       - "traefik.http.services.seebus.loadbalancer.server.port=80"
 
 volumes:

@@ -5,7 +5,6 @@ import App from './App.jsx'
 import { BookingProvider } from './context/BookingContext.jsx'
 import { LanguageProvider } from './context/LanguageContext.jsx'
 import './index.css'
-
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

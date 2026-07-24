@@ -1,15 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Users, Minus, Plus } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
-
-// value: { dewasa: number, anak: number, bayi: number }
-// onChange: (value) => void
 export default function PenumpangPicker({ value, onChange }) {
   const { t } = useLanguage()
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef(null)
-
-  // Tutup popup kalau user klik di luar area komponen ini
   useEffect(() => {
     function handleClickOutside(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -19,25 +14,34 @@ export default function PenumpangPicker({ value, onChange }) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
   const total = value.dewasa + value.anak + value.bayi
-
   const ubah = (kategori, delta) => {
     const nilaiBaru = value[kategori] + delta
-
-    if (kategori === 'dewasa' && nilaiBaru < 1) return // minimal 1 dewasa
+    if (kategori === 'dewasa' && nilaiBaru < 1) return
     if (nilaiBaru < 0) return
-    if (total + delta > 10) return // batas wajar 1 kali booking
-
-    onChange({ ...value, [kategori]: nilaiBaru })
+    if (total + delta > 10) return
+    onChange({
+      ...value,
+      [kategori]: nilaiBaru,
+    })
   }
-
   const kategoriList = [
-    { key: 'dewasa', label: t.search.dewasa, ket: t.search.dewasaKet },
-    { key: 'anak', label: t.search.anak, ket: t.search.anakKet },
-    { key: 'bayi', label: t.search.bayi, ket: t.search.bayiKet },
+    {
+      key: 'dewasa',
+      label: t.search.dewasa,
+      ket: t.search.dewasaKet,
+    },
+    {
+      key: 'anak',
+      label: t.search.anak,
+      ket: t.search.anakKet,
+    },
+    {
+      key: 'bayi',
+      label: t.search.bayi,
+      ket: t.search.bayiKet,
+    },
   ]
-
   return (
     <div className="relative" ref={wrapperRef}>
       <button
@@ -84,11 +88,7 @@ export default function PenumpangPicker({ value, onChange }) {
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="btn-primary w-full mt-3 text-sm"
-          >
+          <button type="button" onClick={() => setOpen(false)} className="btn-primary w-full mt-3 text-sm">
             {t.search.selesai}
           </button>
         </div>
