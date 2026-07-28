@@ -15,7 +15,9 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class,
             BusTypeSeeder::class,
             AvailabilitySeeder::class,
-            SeatSeeder::class,
+            // SeatSeeder sudah tidak dipakai lagi: kursi sekarang otomatis
+            // dibuat oleh AvailabilityGenerator setiap kali jadwal dibuat
+            // (baik saat seeding maupun saat auto-generate on-demand).
             UserSeeder::class,
         ]);
     }

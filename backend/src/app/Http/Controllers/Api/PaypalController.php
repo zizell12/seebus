@@ -41,7 +41,11 @@ class PaypalController extends Controller
             ]);
 
         if (! $response->successful()) {
-            return Response::json(['message' => 'Gagal membuat order PayPal.'], 500);
+            \Illuminate\Support\Facades\Log::error('PayPal create order gagal', [
+                'status' => $response->status(),
+                'body' => $response->json(),
+            ]);
+            return Response::json(['message' => 'Gagal membuat order PayPal.', 'detail' => $response->json()], 500);
         }
 
         return Response::json(['data' => $response->json()]);
@@ -64,10 +68,15 @@ class PaypalController extends Controller
         $secret = config('services.paypal.secret');
 
         $response = Http::withBasicAuth($clientId, $secret)
+            ->withBody('{}', 'application/json')
             ->post("{$paypalUrl}/v2/checkout/orders/{$data['orderID']}/capture");
 
         if (! $response->successful()) {
-            return Response::json(['message' => 'Verifikasi PayPal gagal.'], 500);
+            \Illuminate\Support\Facades\Log::error('PayPal capture gagal', [
+                'status' => $response->status(),
+                'body' => $response->json(),
+            ]);
+            return Response::json(['message' => 'Verifikasi PayPal gagal.', 'detail' => $response->json()], 500);
         }
 
         $captureData = $response->json();

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminJadwalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\JadwalController;
@@ -9,14 +10,19 @@ use App\Http\Controllers\Api\PesanController;
 use App\Http\Controllers\Api\WilayahController;
 use Illuminate\Support\Facades\Route;
 
-// Auth
-Route::post('/register', [AuthController::class, 'register']);
+// Auth (dipakai admin untuk login ke panel admin)
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'me']);
-    Route::get('/pesanan', [BookingController::class, 'index']);
+});
+
+// Panel admin: hanya bisa diakses user yang sudah login DAN usr_role = admin
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/jadwal', [AdminJadwalController::class, 'index']);
+    Route::put('/jadwal/{id}', [AdminJadwalController::class, 'update']);
+    Route::delete('/jadwal/{id}', [AdminJadwalController::class, 'destroy']);
 });
 
 // Booking publik (checkout bisa dipakai tamu maupun user login)

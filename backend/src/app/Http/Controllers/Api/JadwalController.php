@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
+use App\Models\Route;
+use App\Services\AvailabilityGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class JadwalController extends Controller
 {
@@ -20,6 +23,25 @@ class JadwalController extends Controller
             'tujuan' => 'required|string',
             'tanggal' => 'required|date',
         ]);
+
+        // Kalau tanggal yang dicari hari ini atau di masa depan dan belum ada
+        // jadwalnya sama sekali, generate dulu on-demand supaya tidak pernah kosong.
+        if (Carbon::parse($request->tanggal)->startOfDay()->gte(Carbon::today())) {
+            $routes = Route::query()
+                ->whereHas('originStation.region', fn ($q) => $q->where('rg_city', $request->dari))
+                ->whereHas('destinationStation.region', fn ($q) => $q->where('rg_city', $request->tujuan))
+                ->get();
+
+            foreach ($routes as $route) {
+                $sudahAda = Availability::where('route_id', $route->route_id)
+                    ->where('av_date', $request->tanggal)
+                    ->exists();
+
+                if (! $sudahAda) {
+                    AvailabilityGenerator::ensureForRouteAndDate($route, $request->tanggal);
+                }
+            }
+        }
 
         $jadwal = Availability::query()
             ->with(['route.originStation.region', 'route.destinationStation.region', 'busType.company'])
@@ -47,7 +69,8 @@ class JadwalController extends Controller
                 'tanggal' => $item->av_date->toDateString(),
                 'jam_berangkat' => substr($item->av_time, 0, 5),
                 'durasi_menit' => $item->route->rt_duration_min,
-                'harga' => $item->av_price,
+                'harga' => $item->av_price['adult'] ?? 0,
+                'harga_anak' => $item->av_price['child'] ?? 0,
                 'kursi_tersedia' => $kursiTersedia,
             ];
         });

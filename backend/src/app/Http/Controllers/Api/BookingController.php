@@ -14,37 +14,6 @@ use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
-    public function index(Request $request): JsonResponse
-    {
-        $bookings = Booking::query()
-            ->with(['availability.route.originStation.region', 'availability.route.destinationStation.region', 'contact', 'passengers.seat'])
-            ->where('user_id', $request->user()->user_id)
-            ->orderByDesc('created_at')
-            ->get();
-
-        $result = $bookings->map(function ($booking) {
-            return [
-                'booking_id' => $booking->booking_id,
-                'booking_code' => $booking->bk_code,
-                'status' => $booking->bk_status,
-                'rute' => $booking->availability->route->originStation->region->rg_city . ' → ' . $booking->availability->route->destinationStation->region->rg_city,
-                'tanggal' => $booking->availability->av_date->toDateString(),
-                'jam' => substr($booking->availability->av_time, 0, 5),
-                'total' => $booking->bk_total_price,
-                'kontak' => $booking->contact,
-                'penumpang' => $booking->passengers->map(fn ($p) => [
-                    'nama' => $p->ps_name,
-                    'kursi' => $p->seat?->seat_number,
-                    'kategori' => $p->ps_category,
-                ]),
-            ];
-        });
-
-        return response()->json([
-            'data' => $result,
-        ]);
-    }
-
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

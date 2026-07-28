@@ -14,6 +14,9 @@ class BusTypeSeeder extends Seeder
             ['company' => 'Sinar Jaya', 'bt_name' => 'Ekonomi', 'bt_capacity' => 32, 'bt_facilities' => 'AC, Kursi Standar'],
             ['company' => 'Rosalia Indah', 'bt_name' => 'Eksekutif', 'bt_capacity' => 28, 'bt_facilities' => 'AC, Reclining Seat, Bantal & Selimut'],
             ['company' => 'Gunung Harta', 'bt_name' => 'Suite Class', 'bt_capacity' => 20, 'bt_facilities' => 'AC, Kursi 2-2, Snack, USB Charger'],
+            ['company' => 'Harapan Jaya', 'bt_name' => 'Ekonomi', 'bt_capacity' => 32, 'bt_facilities' => 'AC, Kursi Standar, Musik'],
+            ['company' => 'Pahala Kencana', 'bt_name' => 'Eksekutif', 'bt_capacity' => 28, 'bt_facilities' => 'AC, Reclining Seat, Toilet, Snack'],
+            ['company' => 'Kramat Djati', 'bt_name' => 'Suite Class', 'bt_capacity' => 20, 'bt_facilities' => 'AC, Kursi 2-2, Legrest, Selimut, USB Charger'],
         ];
 
         foreach ($busTypes as $b) {

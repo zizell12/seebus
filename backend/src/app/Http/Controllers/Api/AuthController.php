@@ -12,32 +12,6 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * POST /api/register
-     */
-    public function register(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'nama' => 'required|string|max:100',
-            'email' => 'required|email|max:100|unique:user,usr_email',
-            'password' => 'required|string|min:8',
-        ]);
-
-        $user = User::create([
-            'usr_name' => $data['nama'],
-            'usr_email' => $data['email'],
-            'usr_password_hash' => Hash::make($data['password']),
-            'usr_role' => 'customer',
-        ]);
-
-        $token = $user->createToken('seebus-token')->plainTextToken;
-
-        return response()->json([
-            'user' => $user,
-            'token' => $token,
-        ], 201);
-    }
-
-    /**
      * POST /api/login
      */
     public function login(Request $request): JsonResponse

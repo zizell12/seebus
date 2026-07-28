@@ -14,6 +14,12 @@ return [
     |
     */
 
+    'paypal' => [
+    'base_url' => env('PAYPAL_BASE_URL'),
+    'client_id' => env('PAYPAL_CLIENT_ID'),
+    'secret' => env('PAYPAL_SECRET'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
