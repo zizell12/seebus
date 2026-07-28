@@ -15,9 +15,13 @@ export default function Masuk() {
     setLoading(true)
     setError('')
     try {
-      const { token } = await api.login(form)
+      const { token, user } = await api.login(form)
+      if (user?.usr_role !== 'admin') {
+        setError('Akun ini bukan akun admin.')
+        return
+      }
       localStorage.setItem('token', token)
-      navigate('/')
+      navigate('/admin')
     } catch (err) {
       setError(err.message)
     } finally {

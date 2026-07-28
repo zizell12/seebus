@@ -11,7 +11,9 @@ export default function Pembayaran() {
   const navigate = useNavigate()
   const { booking, setPayment } = useBooking()
   const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id } = booking
-  const totalHarga = selectedBus ? selectedBus.harga * passengers.length : 0
+  const totalHarga = selectedBus
+  ? search.penumpang.dewasa * selectedBus.harga + search.penumpang.anak * (selectedBus.hargaAnak ?? selectedBus.harga)
+  : 0
   const totalUsd = (totalHarga / 15000).toFixed(2)
   if (!selectedBus || !passengers.length || !booking_id) {
     navigate('/pencarian')
@@ -79,9 +81,9 @@ export default function Pembayaran() {
 
           <PayPalScriptProvider
             options={{
-              'client-id': 'sb',
-              currency: 'USD',
-            }}
+                'client-id': 'AXda5MhdP4vFOYtmRpevlQiJXwSb-sHYX8wuUKCwMMw7-5qENUr5T1Cd9jdY8YBhwG45E5AwEXepLAnS', // sama seperti PAYPAL_CLIENT_ID di backend
+                currency: 'USD',
+              }}
           >
             <PayPalButtons
               style={{

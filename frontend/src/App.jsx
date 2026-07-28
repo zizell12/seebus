@@ -9,6 +9,8 @@ import HubungiKami from './pages/HubungiKami'
 import KebijakanPerjalanan from './pages/KebijakanPerjalanan'
 import PusatBantuan from './pages/PusatBantuan'
 import Masuk from './pages/Masuk'
+import RequireAdmin from './components/RequireAdmin'
+import AdminDashboard from './pages/admin/AdminDashboard'
 import WisataDetail from './pages/WisataDetail'
 import HasilPencarian from './pages/booking/HasilPencarian'
 import DataPenumpang from './pages/booking/DataPenumpang'
@@ -27,6 +29,14 @@ export default function App() {
           <Route path="/kebijakan-perjalanan" element={<KebijakanPerjalanan />} />
           <Route path="/pusat-bantuan" element={<PusatBantuan />} />
           <Route path="/masuk" element={<Masuk />} />
+          <Route
+            path="/admin"
+            element={
+              <RequireAdmin>
+                <AdminDashboard />
+              </RequireAdmin>
+            }
+          />
           <Route path="/wisata/:slug" element={<WisataDetail />} />
 
           <Route path="/pencarian" element={<HasilPencarian />} />

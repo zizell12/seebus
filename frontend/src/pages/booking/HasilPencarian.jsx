@@ -150,6 +150,7 @@ export default function HasilPencarian() {
       jamBerangkat: bus.jam_berangkat,
       jamTiba: bus.jam_tiba || '',
       harga: bus.harga,
+      hargaAnak: bus.harga_anak,
       kursiTersedia: bus.kursi_tersedia,
     })
     navigate('/pemesanan/penumpang')

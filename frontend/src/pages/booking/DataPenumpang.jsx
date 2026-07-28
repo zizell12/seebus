@@ -9,7 +9,7 @@ import { api } from '../../utils/api'
 import backgrounddb from '../../assets/background-db.png'
 export default function DataPenumpang() {
   const navigate = useNavigate()
-  const { booking, selectSeats, setPassengers, setContact, setNotes } = useBooking()
+  const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId } = useBooking()
   const { selectedBus } = booking
   const jumlahKursi = kursiDibutuhkan(booking.search.penumpang)
   const [tahap, setTahap] = useState('form')
@@ -17,6 +17,8 @@ export default function DataPenumpang() {
   const [seats, setSeats] = useState([])
   const [seatLoading, setSeatLoading] = useState(false)
   const [seatError, setSeatError] = useState(null)
+  const [bookingLoading, setBookingLoading] = useState(false)
+  const [bookingError, setBookingError] = useState(null)
   const [kontak, setKontak] = useState({
     nama: '',
     email: '',
@@ -97,6 +99,8 @@ export default function DataPenumpang() {
     setPassengers(passengers)
     setContact(kontak)
     setNotes(pesan)
+    setBookingError(null)
+    setBookingLoading(true)
 
     try {
       const categories = [
@@ -104,6 +108,9 @@ export default function DataPenumpang() {
         ...Array(booking.search.penumpang.anak).fill('child'),
         ...Array(booking.search.penumpang.bayi).fill('infant'),
       ]
+      const totalHarga =
+      booking.search.penumpang.dewasa * selectedBus.harga +
+      booking.search.penumpang.anak * (selectedBus.hargaAnak ?? selectedBus.harga)
       const payload = {
         contact: {
           ct_name: kontak.nama,
@@ -118,9 +125,9 @@ export default function DataPenumpang() {
           bk_adult_count: booking.search.penumpang.dewasa,
           bk_child_count: booking.search.penumpang.anak,
           bk_infant_count: booking.search.penumpang.bayi,
-          bk_net_price: selectedBus.harga * passengers.length,
-          bk_publish_price: selectedBus.harga * passengers.length,
-          bk_total_price: selectedBus.harga * passengers.length,
+          bk_net_price: totalHarga,
+          bk_publish_price: totalHarga,
+          bk_total_price: totalHarga,
           bk_status: 'pending',
         },
         passengers: passengers.map((p, i) => ({
@@ -138,6 +145,9 @@ export default function DataPenumpang() {
       navigate('/pemesanan/pembayaran')
     } catch (err) {
       console.error(err)
+      setBookingError(err.message || 'Gagal menyimpan data pemesanan. Silakan coba lagi.')
+    } finally {
+      setBookingLoading(false)
     }
   }
   if (!selectedBus) return null
@@ -359,12 +369,18 @@ export default function DataPenumpang() {
               </button>
             </div>
 
+            {bookingError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {bookingError}
+              </p>
+            )}
+
             <button
-              disabled={!kursiTerpilih}
+              disabled={!kursiTerpilih || bookingLoading}
               onClick={handleLanjutPembayaran}
               className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Lanjut ke Pembayaran
+              {bookingLoading ? 'Menyimpan...' : 'Lanjut ke Pembayaran'}
             </button>
           </div>
         )}

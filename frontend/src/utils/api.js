@@ -50,20 +50,6 @@ export const api = {
     })
     return handleResponse(res)
   },
-  register: async ({ nama, email, password }) => {
-    const res = await fetch(`${API_URL}/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        nama,
-        email,
-        password,
-      }),
-    })
-    return handleResponse(res)
-  },
   login: async ({ email, password }) => {
     const res = await fetch(`${API_URL}/login`, {
       method: 'POST',
