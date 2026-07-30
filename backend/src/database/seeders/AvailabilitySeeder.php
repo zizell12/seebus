@@ -14,11 +14,11 @@ class AvailabilitySeeder extends Seeder
         $routes = Route::all();
 
         foreach ($routes as $route) {
-            // Seed awal untuk 5 hari ke depan. Setelah ini, JadwalController
-            // akan otomatis generate jadwal baru on-demand untuk tanggal
-            // manapun yang dicari (lihat App\Services\AvailabilityGenerator),
-            // jadi jadwal tidak akan pernah kosong lagi walau tanggalnya lewat.
-            for ($day = 0; $day < 5; $day++) {
+            // Seed data jadwal real untuk 14 hari ke depan per rute, supaya ada
+            // banyak variasi tanggal, jam, tipe bus, dan harga untuk dicoba di
+            // fitur pencarian & filter (jadwal tidak lagi digenerate otomatis
+            // saat dicari, murni pakai data yang sudah di-seed di sini).
+            for ($day = 0; $day < 14; $day++) {
                 $tanggal = Carbon::now()->addDays($day)->toDateString();
                 AvailabilityGenerator::ensureForRouteAndDate($route, $tanggal);
             }

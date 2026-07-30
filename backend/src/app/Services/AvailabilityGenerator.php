@@ -14,12 +14,51 @@ class AvailabilityGenerator
     private const BASE_PRICE_BY_CATEGORY = [
         'Ekonomi' => 120000,
         'Eksekutif' => 180000,
-        'Suite Class' => 250000,
+        'Sleeper' => 250000,
     ];
 
-    private const JAM_BERANGKAT = ['06:00:00', '09:30:00', '14:00:00'];
+    private const JAM_BERANGKAT = ['00:30:00', '06:00:00', '09:30:00', '14:00:00', '20:00:00'];
 
-    private const SEAT_COLUMNS = ['A', 'B', 'C', 'D'];
+    // Setiap kategori bus punya susunan kursi (kolom) berbeda supaya mapping
+    // kursinya juga terasa beda saat dicoba: Ekonomi 2-3 (5 kolom), Eksekutif
+    // 2-1 (3 kolom), Sleeper 1-1 (2 kolom, kabin/kasur individu).
+    private const SEAT_COLUMNS_BY_CATEGORY = [
+        'Ekonomi' => ['A', 'B', 'C', 'D', 'E'],
+        'Eksekutif' => ['A', 'B', 'C'],
+        'Sleeper' => ['A', 'B'],
+    ];
+
+    /**
+     * Dipakai oleh AdminJadwalController::store() saat admin menambah satu
+     * jadwal baru secara manual lewat panel admin (rute, tipe bus, tanggal,
+     * jam, dan harga dipilih sendiri oleh admin, beda dengan
+     * ensureForRouteAndDate() yang generate otomatis berdasarkan harga default).
+     */
+    public static function createAvailability(
+        Route $route,
+        BusType $busType,
+        string $date,
+        string $time,
+        int $hargaDewasa,
+        int $hargaAnak,
+    ): Availability {
+        $availability = Availability::create([
+            'route_id' => $route->route_id,
+            'bus_type_id' => $busType->bus_type_id,
+            'av_date' => $date,
+            'av_time' => $time,
+            'av_price' => [
+                'adult' => $hargaDewasa,
+                'child' => $hargaAnak,
+            ],
+            'av_status' => 'active',
+            'av_seats' => $busType->bt_capacity,
+        ]);
+
+        self::generateSeats($availability, $busType->bt_capacity ?? 32, $busType->bt_name);
+
+        return $availability;
+    }
 
     /**
      * Pastikan route ini punya jadwal (availability) untuk tanggal tertentu.
@@ -55,17 +94,23 @@ class AvailabilityGenerator
                 'av_seats' => $busType->bt_capacity,
             ]);
 
-            self::generateSeats($availability, $busType->bt_capacity ?? 32);
+            self::generateSeats($availability, $busType->bt_capacity ?? 32, $busType->bt_name);
         }
     }
 
-    private static function generateSeats(Availability $availability, int $capacity): void
+    /**
+     * Dipakai juga oleh AdminJadwalController saat admin menambah jadwal baru
+     * secara manual lewat panel admin, supaya kursi otomatis ter-generate
+     * sesuai kategori bus (Ekonomi/Eksekutif/Sleeper) yang dipilih.
+     */
+    public static function generateSeats(Availability $availability, int $capacity, string $kategori): void
     {
-        $rows = (int) ceil($capacity / count(self::SEAT_COLUMNS));
+        $columns = self::SEAT_COLUMNS_BY_CATEGORY[$kategori] ?? ['A', 'B', 'C', 'D'];
+        $rows = (int) ceil($capacity / count($columns));
         $seatCount = 0;
 
         for ($row = 1; $row <= $rows; $row++) {
-            foreach (self::SEAT_COLUMNS as $col) {
+            foreach ($columns as $col) {
                 if ($seatCount >= $capacity) {
                     break 2;
                 }

@@ -18,6 +18,7 @@ class PesanController extends Controller
         $data = $request->validate([
             'nama' => 'required|string|max:100',
             'email' => 'required|email|max:100',
+            'subjek' => 'nullable|string|max:50',
             'pesan' => 'required|string',
         ]);
 

@@ -1,48 +1,9 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Ticket, CreditCard, RotateCcw, UserCircle, Search, ChevronDown } from 'lucide-react'
+import { Ticket, CreditCard, RotateCcw, Headphones, Search, ChevronDown } from 'lucide-react'
+import { useLanguage } from '../context/LanguageContext'
 import backgroundBantuan from '../assets/background-db.png'
-import fotoMitra from '../assets/Bali.jpg'
-const kategori = [
-  {
-    icon: Ticket,
-    judul: 'Pemesanan Tiket',
-    desk: 'Panduan memilih jadwal, memilih kursi, dan menyelesaikan pemesanan.',
-  },
-  {
-    icon: CreditCard,
-    judul: 'Pembayaran',
-    desk: 'Informasi mengenai metode pembayaran, konfirmasi, dan kendala pembayaran.',
-  },
-  {
-    icon: RotateCcw,
-    judul: 'Pembatalan & Refund',
-    desk: 'Pelajari cara membatalkan tiket dan proses pengembalian dana sesuai kebijakan.',
-  },
-  {
-    icon: UserCircle,
-    judul: 'Akun & Profil',
-    desk: 'Kelola akun, ubah data profil, dan atur preferensi akun Anda.',
-  },
-]
-const faqList = [
-  {
-    q: 'Bagaimana cara memesan tiket bus di SeeBus?',
-    a: 'Pilih kota asal dan tujuan, tanggal perjalanan, lalu pilih jadwal dan kursi yang tersedia. Selesaikan pembayaran untuk menerima e-tiket.',
-  },
-  {
-    q: 'Bagaimana cara mengubah jadwal keberangkatan?',
-    a: 'Buka menu Pesanan Saya, pilih tiket yang ingin diubah, lalu pilih opsi Ubah Jadwal. Perubahan tunduk pada kebijakan reschedule yang berlaku.',
-  },
-  {
-    q: 'Bagaimana cara mengajukan refund?',
-    a: 'Jika tiket memenuhi syarat pengajuan refund, Anda dapat mengajukan refund melalui menu Pesanan Saya. Proses pengembalian dana mengikuti kebijakan operator bus yang digunakan.',
-  },
-  {
-    q: 'Mengapa e-tiket belum saya terima?',
-    a: 'E-tiket biasanya terkirim beberapa menit setelah pembayaran berhasil. Jika belum diterima, cek folder spam email atau hubungi Customer Service kami.',
-  },
-]
+import fotoMitra from '../assets/map-kantor.jpg'
+const kategoriIcons = [Ticket, CreditCard, RotateCcw, Headphones]
 function KategoriCard({ icon: Icon, judul, desk }) {
   return (
     <div className="card text-center">
@@ -67,7 +28,9 @@ function FaqItem({ q, a }) {
   )
 }
 export default function PusatBantuan() {
+  const { t } = useLanguage()
   const [query, setQuery] = useState('')
+  const faqList = t.pusatBantuanPage.faq
   const faqTersaring = query.trim()
     ? faqList.filter(
         (f) =>
@@ -84,49 +47,35 @@ export default function PusatBantuan() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-14 text-center">
-          <h1 className="text-white text-2xl md:text-3xl font-bold mb-2">Pusat Bantuan SeeBus</h1>
-          <p className="text-white/80 max-w-xl mx-auto text-sm mb-6">
-            Temukan jawaban atas pertanyaan seputar pemesanan tiket, pembayaran, pembatalan, hingga perjalanan Anda
-            dengan mudah dan cepat.
-          </p>
+          <h1 className="text-white text-2xl md:text-3xl font-bold mb-2">{t.pusatBantuanPage.heroJudul}</h1>
+          <p className="text-white/80 max-w-xl mx-auto text-sm mb-6">{t.pusatBantuanPage.heroDeskripsi}</p>
           <div className="max-w-md mx-auto relative">
             <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari bantuan, misalnya cara pesan tiket, refund, ubah jadwal"
+              placeholder={t.pusatBantuanPage.placeholderCari}
               className="w-full bg-white rounded-xl pl-10 pr-4 py-3 text-sm outline-none"
             />
           </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6">
-        <p className="text-xs text-gray-400">
-          <Link to="/hubungi-kami" className="hover:text-navy-900">
-            Hubungi Kami
-          </Link>{' '}
-          {'>'} Pusat Bantuan
-        </p>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {kategori.map((k) => (
-            <KategoriCard key={k.judul} {...k} />
+          {t.pusatBantuanPage.kategori.map((k, i) => (
+            <KategoriCard key={k.judul} icon={kategoriIcons[i]} {...k} />
           ))}
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 pb-14 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <h2 className="text-xl font-bold text-navy-900 mb-1">Pertanyaan yang Sering Diajukan (FAQ)</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Berikut adalah beberapa pertanyaan yang paling sering ditanyakan pengguna SeeBus.
-          </p>
+          <h2 className="text-xl font-bold text-navy-900 mb-1">{t.pusatBantuanPage.faqJudul}</h2>
+          <p className="text-sm text-gray-500 mb-6">{t.pusatBantuanPage.faqDeskripsi}</p>
           <div className="space-y-3">
             {faqTersaring.length === 0 ? (
-              <p className="text-sm text-gray-500">Tidak ada pertanyaan yang cocok dengan pencarianmu.</p>
+              <p className="text-sm text-gray-500">{t.pusatBantuanPage.tidakDitemukan}</p>
             ) : (
               faqTersaring.map((f) => <FaqItem key={f.q} {...f} />)
             )}
@@ -134,13 +83,11 @@ export default function PusatBantuan() {
         </div>
 
         <div className="card p-0 overflow-hidden self-start">
-          <img src={fotoMitra} alt="Kemitraan SeeBus" className="w-full h-36 object-cover" />
+          <img src={fotoMitra} alt={t.pusatBantuanPage.altFotoMitra} className="w-full h-36 object-cover" />
           <div className="p-4">
-            <p className="text-xs text-brand-teal font-semibold mb-1">KEMITRAAN</p>
-            <h3 className="font-semibold text-navy-900 text-sm mb-1">Gabung jadi Partner?</h3>
-            <p className="text-xs text-gray-500">
-              Perluas jangkauan usahamu dan jadi bagian dari SeeBus Transit Systems.
-            </p>
+            <p className="text-xs text-brand-teal font-semibold mb-1">{t.pusatBantuanPage.kemitraanLabel}</p>
+            <h3 className="font-semibold text-navy-900 text-sm mb-1">{t.pusatBantuanPage.kemitraanJudul}</h3>
+            <p className="text-xs text-gray-500">{t.pusatBantuanPage.kemitraanDeskripsi}</p>
           </div>
         </div>
       </div>

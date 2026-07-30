@@ -10,5 +10,5 @@ class PesanKontak extends Model
     protected $primaryKey = 'pesan_id';
     const UPDATED_AT = null;
 
-    protected $fillable = ['nama', 'email', 'pesan'];
+    protected $fillable = ['nama', 'email', 'subjek', 'pesan', 'status'];
 }

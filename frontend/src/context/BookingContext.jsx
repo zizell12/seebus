@@ -13,6 +13,7 @@ const initialState = {
   },
   selectedBus: null,
   booking_id: null,
+  harga: null,
   selectedSeats: null,
   passengers: [],
   contact: {
@@ -59,6 +60,11 @@ export function BookingProvider({ children }) {
       ...b,
       booking_id: bookingId,
     }))
+  const setHarga = (harga) =>
+    setBooking((b) => ({
+      ...b,
+      harga,
+    }))
   const setNotes = (notes) =>
     setBooking((b) => ({
       ...b,
@@ -80,6 +86,7 @@ export function BookingProvider({ children }) {
         setPassengers,
         setContact,
         setBookingId,
+        setHarga,
         setNotes,
         setPayment,
         resetBooking,

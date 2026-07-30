@@ -5,15 +5,17 @@ import { MapPin } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
 import BookingSummaryBar from '../../components/BookingSummaryBar'
 import { useBooking } from '../../context/BookingContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../utils/api'
 import backgrounddb from '../../assets/background-db.png'
 export default function Pembayaran() {
   const navigate = useNavigate()
+  const { t, lang } = useLanguage()
   const { booking, setPayment } = useBooking()
-  const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id } = booking
-  const totalHarga = selectedBus
-  ? search.penumpang.dewasa * selectedBus.harga + search.penumpang.anak * (selectedBus.hargaAnak ?? selectedBus.harga)
-  : 0
+  const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id, harga } = booking
+  const totalHarga = harga?.total ?? 0
+  const hargaPublish = harga?.publish ?? 0
+  const biayaLayanan = harga?.biayaLayanan ?? 0
   const totalUsd = (totalHarga / 15000).toFixed(2)
   if (!selectedBus || !passengers.length || !booking_id) {
     navigate('/pencarian')
@@ -35,15 +37,11 @@ export default function Pembayaran() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
-        <p className="text-xs text-gray-400">Beranda &gt; Pembayaran</p>
-      </div>
+      <BookingSummaryBar showUbah={false} />
 
-      <BookingSummaryBar />
-
-      <div className="max-w-md mx-auto px-4 md:px-6 pb-14">
+      <div className="max-w-md mx-auto px-4 md:px-6 pt-8 pb-14">
         <div className="card">
-          <h2 className="font-bold text-navy-900 mb-4">Rincian Pemesanan</h2>
+          <h2 className="font-bold text-navy-900 mb-4">{t.pembayaranPage.rincianPemesanan}</h2>
 
           <div className="flex items-start gap-2 text-sm text-navy-900 mb-3">
             <MapPin className="w-4 h-4 text-brand-red mt-0.5 shrink-0" />
@@ -52,7 +50,7 @@ export default function Pembayaran() {
                 {search.dari} → {search.tujuan}
               </p>
               <p className="text-xs text-gray-400">
-                {new Date(search.tanggal).toLocaleDateString('id-ID', {
+                {new Date(search.tanggal).toLocaleDateString(lang === 'en' ? 'en-US' : 'id-ID', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
@@ -65,17 +63,21 @@ export default function Pembayaran() {
 
           <div className="text-sm text-navy-900 mb-4 pb-4 border-b border-gray-100">
             <p className="font-medium">
-              Kursi {selectedSeats.nomor.join(', ')} ({selectedBus.kelas})
+              {t.penumpangPage.kursiLabel} {selectedSeats.nomor.join(', ')} ({selectedBus.kelas})
             </p>
-            <p className="text-xs text-gray-400">{passengers.length} Penumpang</p>
+            <p className="text-xs text-gray-400">{passengers.length} {t.pembayaranPage.penumpang}</p>
           </div>
 
           <div className="flex justify-between text-sm text-gray-600 mb-1">
-            <span>Harga</span>
-            <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
+            <span>{t.pembayaranPage.harga}</span>
+            <span>Rp {hargaPublish.toLocaleString('id-ID')}</span>
           </div>
-          <div className="flex justify-between font-bold text-navy-900 mb-6">
-            <span>Total</span>
+          <div className="flex justify-between text-sm text-gray-600 mb-1">
+            <span>{t.pembayaranPage.biayaLayanan}</span>
+            <span>Rp {biayaLayanan.toLocaleString('id-ID')}</span>
+          </div>
+          <div className="flex justify-between font-bold text-navy-900 mb-6 pt-2 border-t border-gray-100">
+            <span>{t.pembayaranPage.total}</span>
             <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
           </div>
 

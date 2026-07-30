@@ -46,7 +46,7 @@ function BusCard({ bus, onPilih, t }) {
         <div className="flex items-center gap-4">
           <div>
             <p className="font-bold text-navy-900">{bus.jamBerangkat}</p>
-            <p className="text-xs text-gray-400">{bus.dari}</p>
+            <p className="text-xs text-gray-400">{bus.terminalAsal || bus.dari}</p>
           </div>
           <div className="flex-1 flex flex-col items-center px-2">
             <span className="text-xs text-gray-400 mb-1">{bus.durasi}</span>
@@ -56,7 +56,7 @@ function BusCard({ bus, onPilih, t }) {
           </div>
           <div>
             <p className="font-bold text-navy-900">{bus.jamTiba}</p>
-            <p className="text-xs text-gray-400">{bus.tujuan}</p>
+            <p className="text-xs text-gray-400">{bus.terminalTujuan || bus.tujuan}</p>
           </div>
         </div>
 
@@ -84,7 +84,7 @@ function BusCard({ bus, onPilih, t }) {
 }
 export default function HasilPencarian() {
   const navigate = useNavigate()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const { booking, selectBus, updateSearch } = useBooking()
   const { dari, tujuan, tanggal, penumpang } = booking.search
   const [hasil, setHasil] = useState([])
@@ -146,6 +146,8 @@ export default function HasilPencarian() {
       fasilitas: bus.fasilitas,
       dari: bus.dari,
       tujuan: bus.tujuan,
+      terminalAsal: bus.terminalAsal,
+      terminalTujuan: bus.terminalTujuan,
       tanggal: bus.tanggal,
       jamBerangkat: bus.jam_berangkat,
       jamTiba: bus.jam_tiba || '',
@@ -188,6 +190,8 @@ export default function HasilPencarian() {
           waktuKategori: getWaktuKategoriFromJam(item.jam_berangkat),
           durasi: item.durasi_menit ? `${Math.floor(item.durasi_menit / 60)}j ${item.durasi_menit % 60}m` : '',
           jamTiba: item.jam_tiba || '',
+          terminalAsal: item.terminal_asal || '',
+          terminalTujuan: item.terminal_tujuan || '',
         }))
         setHasil(mapped)
       } catch (err) {
@@ -212,7 +216,7 @@ export default function HasilPencarian() {
       if (sortBy === 'durasi') return durasiKeMenit(a.durasi) - durasiKeMenit(b.durasi)
       return jamKeMenit(a.jamBerangkat) - jamKeMenit(b.jamBerangkat)
     })
-  }, [dari, tujuan, appliedFilter, sortBy])
+  }, [dari, tujuan, appliedFilter, sortBy, hasil])
   const hasilTampil = hasilFiltered.slice(0, visibleCount)
   return (
     <div>
@@ -230,15 +234,6 @@ export default function HasilPencarian() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
-        <p className="text-xs text-gray-400">
-          <Link to="/" className="hover:text-navy-900">
-            {t.nav.beranda}
-          </Link>{' '}
-          {'>'} {t.search.cariBus}
-        </p>
-      </div>
-
       <div className="bg-navy-900 mt-4">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
           {!editMode ? (
@@ -251,7 +246,7 @@ export default function HasilPencarian() {
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
                   {tanggal &&
-                    new Date(tanggal).toLocaleDateString('id-ID', {
+                    new Date(tanggal).toLocaleDateString(lang === 'en' ? 'en-US' : 'id-ID', {
                       day: 'numeric',
                       month: 'long',
                       year: 'numeric',
@@ -264,7 +259,7 @@ export default function HasilPencarian() {
                   onClick={bukaEdit}
                   className="bg-white text-navy-900 text-xs font-semibold px-3 py-1.5 rounded-lg"
                 >
-                  Ubah
+                  {t.busList.ubah}
                 </button>
               </div>
             </div>
@@ -288,10 +283,10 @@ export default function HasilPencarian() {
                 </div>
                 <div className="flex gap-2">
                   <button type="submit" className="btn-primary px-4 h-[42px] whitespace-nowrap text-sm">
-                    Terapkan
+                    {t.busList.terapkan}
                   </button>
                   <button type="button" onClick={() => setEditMode(false)} className="text-gray-400 text-xs px-2">
-                    Batal
+                    {t.busList.batal}
                   </button>
                 </div>
               </form>
@@ -316,7 +311,7 @@ export default function HasilPencarian() {
               }
               className="text-xs text-brand-red font-medium"
             >
-              Reset
+              {t.busList.reset}
             </button>
           </div>
 
@@ -354,12 +349,12 @@ export default function HasilPencarian() {
           </div>
 
           <div className="mb-5">
-            <p className="text-xs font-semibold text-navy-900 mb-2">Rentang Harga</p>
+            <p className="text-xs font-semibold text-navy-900 mb-2">{t.busList.rentangHarga}</p>
             <div className="flex items-center gap-2">
               <input
                 type="number"
                 min="0"
-                placeholder="Rp min"
+                placeholder={t.busList.hargaMinPlaceholder}
                 value={draftFilter.hargaMin}
                 onChange={(e) =>
                   setDraftFilter({
@@ -373,7 +368,7 @@ export default function HasilPencarian() {
               <input
                 type="number"
                 min="0"
-                placeholder="Rp maks"
+                placeholder={t.busList.hargaMaksPlaceholder}
                 value={draftFilter.hargaMax}
                 onChange={(e) =>
                   setDraftFilter({
@@ -409,13 +404,13 @@ export default function HasilPencarian() {
             }}
             className="w-full bg-navy-900 text-white text-sm font-medium rounded-xl py-2.5 hover:bg-navy-800 transition-colors"
           >
-            Simpan Filter
+            {t.busList.simpanFilter}
           </button>
         </aside>
 
         <div className="md:col-span-3">
           <div className="flex items-center justify-between mb-4 relative">
-            <p className="text-sm text-gray-500">{hasilFiltered.length} bus ditemukan</p>
+            <p className="text-sm text-gray-500">{hasilFiltered.length} {t.busList.busDitemukan}</p>
             <div className="relative">
               <button
                 onClick={() => setSortOpen(!sortOpen)}
@@ -459,7 +454,7 @@ export default function HasilPencarian() {
                 onClick={() => setVisibleCount((v) => v + 3)}
                 className="flex items-center gap-1 mx-auto text-navy-900 font-medium text-sm border border-navy-900 rounded-xl px-5 py-2.5 hover:bg-navy-900/5 transition-colors"
               >
-                Tampilkan Lebih Banyak <ChevronDown className="w-4 h-4" />
+                {t.busList.tampilkanLebih} <ChevronDown className="w-4 h-4" />
               </button>
             </div>
           )}

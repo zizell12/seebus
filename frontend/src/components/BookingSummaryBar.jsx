@@ -2,8 +2,10 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Calendar, Users } from 'lucide-react'
 import { useBooking, totalPenumpang } from '../context/BookingContext'
-export default function BookingSummaryBar() {
+import { useLanguage } from '../context/LanguageContext'
+export default function BookingSummaryBar({ showUbah = true }) {
   const navigate = useNavigate()
+  const { t, lang } = useLanguage()
   const { booking } = useBooking()
   const { dari, tujuan, tanggal, penumpang } = booking.search
   return (
@@ -16,21 +18,23 @@ export default function BookingSummaryBar() {
           <span className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4" />
             {tanggal &&
-              new Date(tanggal).toLocaleDateString('id-ID', {
+              new Date(tanggal).toLocaleDateString(lang === 'en' ? 'en-US' : 'id-ID', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
               })}
           </span>
           <span className="flex items-center gap-1.5">
-            <Users className="w-4 h-4" /> {totalPenumpang(penumpang)} Penumpang
+            <Users className="w-4 h-4" /> {totalPenumpang(penumpang)} {t.summaryBar.penumpang}
           </span>
-          <button
-            onClick={() => navigate('/pencarian')}
-            className="bg-brand-red text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
-          >
-            Ubah
-          </button>
+          {showUbah && (
+            <button
+              onClick={() => navigate('/pencarian')}
+              className="bg-brand-red text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+            >
+              {t.summaryBar.ubah}
+            </button>
+          )}
         </div>
       </div>
     </div>

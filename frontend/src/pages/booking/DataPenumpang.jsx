@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Armchair, Pencil } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
 import BookingSummaryBar from '../../components/BookingSummaryBar'
 import SeatPickerModal from '../../components/SeatPickerModal'
 import { useBooking, kursiDibutuhkan } from '../../context/BookingContext'
-import { api } from '../../utils/api'
+import { useLanguage } from '../../context/LanguageContext'
+import { api, getSessionId } from '../../utils/api'
 import backgrounddb from '../../assets/background-db.png'
 export default function DataPenumpang() {
   const navigate = useNavigate()
-  const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId } = useBooking()
+  const { t } = useLanguage()
+  const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId, setHarga } = useBooking()
   const { selectedBus } = booking
   const jumlahKursi = kursiDibutuhkan(booking.search.penumpang)
   const [tahap, setTahap] = useState('form')
@@ -63,6 +65,28 @@ export default function DataPenumpang() {
   )
   const [pesan, setPesan] = useState('')
   const [kursiTerpilih, setKursiTerpilih] = useState(null)
+  const kursiTerpilihRef = useRef(null)
+  const bookingDibuatRef = useRef(false)
+  useEffect(() => {
+    kursiTerpilihRef.current = kursiTerpilih
+  }, [kursiTerpilih])
+  useEffect(() => {
+    return () => {
+      // Kalau halaman ini ditinggalkan (pindah rute) sebelum booking berhasil
+      // dibuat, lepas lock kursi supaya tidak menahan kursi tanpa guna.
+      // Best-effort: kalau request tidak sempat selesai (misal tab ditutup),
+      // job pembersih lock kedaluwarsa di backend yang akan melepasnya.
+      if (!bookingDibuatRef.current && kursiTerpilihRef.current?.nomor?.length && selectedBus?.availability_id) {
+        api
+          .unlockKursi({
+            availability_id: selectedBus.availability_id,
+            nomor_kursi: kursiTerpilihRef.current.nomor,
+          })
+          .catch(() => {})
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const updateDetail = (index, field, value) => {
     setDetailPenumpang((prev) => {
       const next = [...prev]
@@ -79,15 +103,41 @@ export default function DataPenumpang() {
     setNotes(pesan)
     setTahap('kursi')
   }
-  const handleKonfirmasiKursi = (seatIdentifiers) => {
+  const handleKonfirmasiKursi = async (seatIdentifiers) => {
     const selected = seats.filter(
       (seat) => seatIdentifiers.includes(seat.seat_id) || seatIdentifiers.includes(seat.nomor),
     )
-    setKursiTerpilih({
-      seatIds: selected.map((seat) => seat.seat_id),
-      nomor: selected.map((seat) => seat.nomor),
-    })
-    setModalOpen(false)
+    const nomorBaru = selected.map((seat) => seat.nomor)
+
+    setSeatError(null)
+    try {
+      if (kursiTerpilih?.nomor?.length) {
+        await api.unlockKursi({
+          availability_id: selectedBus.availability_id,
+          nomor_kursi: kursiTerpilih.nomor,
+        })
+      }
+      await api.lockKursi({
+        availability_id: selectedBus.availability_id,
+        nomor_kursi: nomorBaru,
+      })
+      setKursiTerpilih({
+        seatIds: selected.map((seat) => seat.seat_id),
+        nomor: nomorBaru,
+      })
+      setModalOpen(false)
+    } catch (err) {
+      // Kemungkinan besar kursi barusan diambil orang lain -> muat ulang
+      // status kursi terbaru supaya modal langsung menunjukkan kursi mana
+      // yang sekarang tidak tersedia.
+      setSeatError(err.message || 'Kursi yang dipilih sudah tidak tersedia, silakan pilih kursi lain.')
+      try {
+        const data = await api.getKursi(selectedBus.availability_id)
+        setSeats(data)
+      } catch {
+        // abaikan, pesan error di atas sudah cukup untuk diketahui user
+      }
+    }
   }
   const handleLanjutPembayaran = async () => {
     selectSeats(kursiTerpilih)
@@ -108,9 +158,6 @@ export default function DataPenumpang() {
         ...Array(booking.search.penumpang.anak).fill('child'),
         ...Array(booking.search.penumpang.bayi).fill('infant'),
       ]
-      const totalHarga =
-      booking.search.penumpang.dewasa * selectedBus.harga +
-      booking.search.penumpang.anak * (selectedBus.hargaAnak ?? selectedBus.harga)
       const payload = {
         contact: {
           ct_name: kontak.nama,
@@ -120,14 +167,12 @@ export default function DataPenumpang() {
         },
         availability_id: selectedBus.availability_id || selectedBus.id,
         user_id: null,
+        session_id: getSessionId(),
         booking: {
           bk_notes: pesan || null,
           bk_adult_count: booking.search.penumpang.dewasa,
           bk_child_count: booking.search.penumpang.anak,
           bk_infant_count: booking.search.penumpang.bayi,
-          bk_net_price: totalHarga,
-          bk_publish_price: totalHarga,
-          bk_total_price: totalHarga,
           bk_status: 'pending',
         },
         passengers: passengers.map((p, i) => ({
@@ -141,11 +186,18 @@ export default function DataPenumpang() {
       }
 
       const response = await api.createBooking(payload)
+      bookingDibuatRef.current = true
       setBookingId(response.data.booking_id)
+      setHarga({
+        net: response.data.bk_net_price,
+        publish: response.data.bk_publish_price,
+        total: response.data.bk_total_price,
+        biayaLayanan: response.data.biaya_layanan,
+      })
       navigate('/pemesanan/pembayaran')
     } catch (err) {
       console.error(err)
-      setBookingError(err.message || 'Gagal menyimpan data pemesanan. Silakan coba lagi.')
+      setBookingError(err.message || t.penumpangPage.errorDefault)
     } finally {
       setBookingLoading(false)
     }
@@ -167,22 +219,20 @@ export default function DataPenumpang() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-4">
-        <p className="text-xs text-gray-400">Beranda &gt; Detail Penumpang</p>
-      </div>
+      <BookingSummaryBar showUbah={false} />
 
-      <BookingSummaryBar />
-
-      <div className="max-w-3xl mx-auto px-4 md:px-6 pb-14 space-y-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 pt-8 pb-14 space-y-8">
         {tahap === 'form' ? (
           <form onSubmit={handleSimpanData} className="space-y-8">
             <div>
-              <h2 className="font-bold text-navy-900 mb-4">Informasi Penumpang</h2>
+              <h2 className="font-bold text-navy-900 mb-4">{t.penumpangPage.informasiPenumpang}</h2>
               <div className="card">
-                <p className="text-sm font-semibold text-navy-900 mb-4">Kontak Pemesan ({jumlahKursi} Penumpang)</p>
+                <p className="text-sm font-semibold text-navy-900 mb-4">
+                  {t.penumpangPage.kontakPemesan} ({jumlahKursi} {t.penumpangPage.penumpangLabel})
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-gray-500">Nama*</label>
+                    <label className="text-xs text-gray-500">{t.penumpangPage.labelNama}</label>
                     <input
                       required
                       value={kontak.nama}
@@ -192,12 +242,12 @@ export default function DataPenumpang() {
                           nama: e.target.value,
                         })
                       }
-                      placeholder="Nama"
+                      placeholder={t.penumpangPage.placeholderNama}
                       className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Email*</label>
+                    <label className="text-xs text-gray-500">{t.penumpangPage.labelEmail}</label>
                     <input
                       required
                       type="email"
@@ -213,7 +263,7 @@ export default function DataPenumpang() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Phone*</label>
+                    <label className="text-xs text-gray-500">{t.penumpangPage.labelPhone}</label>
                     <input
                       required
                       value={kontak.phone}
@@ -228,7 +278,7 @@ export default function DataPenumpang() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">Kewarganegaraan*</label>
+                    <label className="text-xs text-gray-500">{t.penumpangPage.labelKewarganegaraan}</label>
                     <select
                       value={kontak.kewarganegaraan}
                       onChange={(e) =>
@@ -239,8 +289,8 @@ export default function DataPenumpang() {
                       }
                       className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                     >
-                      <option>Indonesia</option>
-                      <option>Lainnya</option>
+                      <option>{t.penumpangPage.opsiIndonesia}</option>
+                      <option>{t.penumpangPage.opsiLainnya}</option>
                     </select>
                   </div>
                 </div>
@@ -248,24 +298,26 @@ export default function DataPenumpang() {
             </div>
 
             <div>
-              <h2 className="font-bold text-navy-900 mb-4">Detail Penumpang</h2>
+              <h2 className="font-bold text-navy-900 mb-4">{t.penumpangPage.detailPenumpang}</h2>
               <div className="space-y-4">
                 {detailPenumpang.map((p, i) => (
                   <div key={i} className="card">
-                    <p className="text-sm font-semibold text-navy-900 mb-3">Penumpang {i + 1}</p>
+                    <p className="text-sm font-semibold text-navy-900 mb-3">
+                      {t.penumpangPage.penumpangKe} {i + 1}
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs text-gray-500">Nama*</label>
+                        <label className="text-xs text-gray-500">{t.penumpangPage.labelNamaPenumpang}</label>
                         <input
                           required
                           value={p.nama}
                           onChange={(e) => updateDetail(i, 'nama', e.target.value)}
-                          placeholder="Masukkan nama penumpang"
+                          placeholder={t.penumpangPage.placeholderNamaPenumpang}
                           className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500">Usia*</label>
+                        <label className="text-xs text-gray-500">{t.penumpangPage.labelUsia}</label>
                         <input
                           required
                           type="number"
@@ -276,7 +328,7 @@ export default function DataPenumpang() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500">Jenis Kelamin*</label>
+                        <label className="text-xs text-gray-500">{t.penumpangPage.labelJenisKelamin}</label>
                         <select
                           value={p.jenisKelamin}
                           onChange={(e) => updateDetail(i, 'jenisKelamin', e.target.value)}
@@ -287,7 +339,7 @@ export default function DataPenumpang() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500">Kewarganegaraan*</label>
+                        <label className="text-xs text-gray-500">{t.penumpangPage.labelKewarganegaraan}</label>
                         <input
                           value={p.kewarganegaraan}
                           onChange={(e) => updateDetail(i, 'kewarganegaraan', e.target.value)}
@@ -301,7 +353,7 @@ export default function DataPenumpang() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-navy-900">Pesan Tambahan (Opsional)</label>
+              <label className="text-sm font-medium text-navy-900">{t.penumpangPage.pesanTambahan}</label>
               <textarea
                 rows={4}
                 value={pesan}
@@ -311,19 +363,19 @@ export default function DataPenumpang() {
             </div>
 
             <button type="submit" className="btn-primary w-full">
-              Simpan Data Penumpang
+              {t.penumpangPage.simpanDataPenumpang}
             </button>
           </form>
         ) : (
           <div className="space-y-6">
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-navy-900">Data Penumpang</h2>
+                <h2 className="font-bold text-navy-900">{t.penumpangPage.dataPenumpang}</h2>
                 <button
                   onClick={() => setTahap('form')}
                   className="flex items-center gap-1 text-xs text-brand-red font-medium"
                 >
-                  <Pencil className="w-3.5 h-3.5" /> Ubah Data
+                  <Pencil className="w-3.5 h-3.5" /> {t.penumpangPage.ubahData}
                 </button>
               </div>
               <div className="card space-y-3">
@@ -332,12 +384,13 @@ export default function DataPenumpang() {
                     <div>
                       <p className="font-medium text-navy-900">{p.nama}</p>
                       <p className="text-xs text-gray-400">
-                        {p.jenisKelamin} · {p.usia} tahun
+                        {p.jenisKelamin === 'Perempuan' ? t.penumpangPage.perempuan : t.penumpangPage.lakiLaki} · {p.usia}{' '}
+                        {t.penumpangPage.tahun}
                       </p>
                     </div>
                     {kursiTerpilih && (
                       <span className="text-xs font-semibold text-navy-900 bg-navy-900/5 rounded-full px-3 py-1">
-                        Kursi {kursiTerpilih.nomor[i]}
+                        {t.penumpangPage.kursiLabel} {kursiTerpilih.nomor[i]}
                       </span>
                     )}
                   </div>
@@ -346,7 +399,7 @@ export default function DataPenumpang() {
             </div>
 
             <div>
-              <h2 className="font-bold text-navy-900 mb-4">Pilih Kursi</h2>
+              <h2 className="font-bold text-navy-900 mb-4">{t.penumpangPage.pilihKursiJudul}</h2>
               <button
                 type="button"
                 onClick={() => setModalOpen(true)}
@@ -358,14 +411,18 @@ export default function DataPenumpang() {
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-semibold text-navy-900">
-                      {kursiTerpilih ? `Kursi ${kursiTerpilih.nomor.join(', ')} dipilih` : 'Belum ada kursi dipilih'}
+                      {kursiTerpilih
+                        ? `${t.penumpangPage.kursiLabel} ${kursiTerpilih.nomor.join(', ')} ${t.penumpangPage.kursiDipilih}`
+                        : t.penumpangPage.belumAdaKursi}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {jumlahKursi} kursi dibutuhkan untuk {jumlahKursi} penumpang
+                      {jumlahKursi} {t.penumpangPage.kursiDibutuhkan} {jumlahKursi} {t.penumpangPage.penumpangKecil}
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-brand-red font-medium">{kursiTerpilih ? 'Ubah' : 'Pilih Kursi'}</span>
+                <span className="text-xs text-brand-red font-medium">
+                  {kursiTerpilih ? t.penumpangPage.ubah : t.penumpangPage.pilihKursi}
+                </span>
               </button>
             </div>
 
@@ -380,7 +437,7 @@ export default function DataPenumpang() {
               onClick={handleLanjutPembayaran}
               className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {bookingLoading ? 'Menyimpan...' : 'Lanjut ke Pembayaran'}
+              {bookingLoading ? t.penumpangPage.menyimpan : t.penumpangPage.lanjutPembayaran}
             </button>
           </div>
         )}
@@ -392,6 +449,7 @@ export default function DataPenumpang() {
         seats={seats}
         loading={seatLoading}
         error={seatError}
+        initialSelected={kursiTerpilih?.nomor || []}
         onClose={() => setModalOpen(false)}
         onConfirm={handleKonfirmasiKursi}
       />

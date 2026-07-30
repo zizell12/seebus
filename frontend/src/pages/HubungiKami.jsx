@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Phone, Mail, MessageCircle, HelpCircle } from 'lucide-react'
-import kantorPusat from '../assets/background-db.png'
+import kantorPusat from '../assets/map-kantor.jpg'
 import { Link } from 'react-router-dom'
 import { api } from '../utils/api'
 import { useLanguage } from '../context/LanguageContext'
@@ -44,7 +44,8 @@ export default function HubungiKami() {
       await api.kirimPesan({
         nama: form.nama,
         email: form.email,
-        pesan: `[${form.subjek}] ${form.pesan}`,
+        subjek: form.subjek,
+        pesan: form.pesan,
       })
       setSukses(true)
       setForm({

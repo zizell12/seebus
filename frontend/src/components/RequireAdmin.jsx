@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { api } from '../utils/api'
+import { useLanguage } from '../context/LanguageContext'
 
 // Bungkus halaman admin manapun dengan komponen ini supaya cuma bisa
 // diakses kalau user sudah login DAN usr_role-nya admin. Contoh pakai:
@@ -8,6 +9,7 @@ import { api } from '../utils/api'
 //   <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
 //
 export default function RequireAdmin({ children }) {
+  const { t } = useLanguage()
   const [status, setStatus] = useState('checking') // checking | allowed | denied
 
   useEffect(() => {
@@ -28,7 +30,11 @@ export default function RequireAdmin({ children }) {
   }, [])
 
   if (status === 'checking') {
-    return <div className="min-h-[50vh] flex items-center justify-center text-gray-400 text-sm">Memeriksa akses...</div>
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center text-gray-400 text-sm">
+        {t.masukPage.memeriksaAkses}
+      </div>
+    )
   }
 
   if (status === 'denied') {

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ShieldCheck, Luggage, ClipboardList, RefreshCw } from 'lucide-react'
+import { useLanguage } from '../context/LanguageContext'
 import backgroundKebijakan from '../assets/background-db.png'
 function InfoCard({ title, children }) {
   return (
@@ -24,6 +25,8 @@ function StepItem({ number, title, desc }) {
   )
 }
 export default function KebijakanPerjalanan() {
+  const { t } = useLanguage()
+  const k = t.kebijakanPage
   return (
     <div>
       <section
@@ -33,41 +36,23 @@ export default function KebijakanPerjalanan() {
         }}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-14 text-center">
-          <h1 className="text-white text-2xl md:text-3xl font-bold mb-2">Kebijakan Perjalanan SeeBus</h1>
-          <p className="text-white/80 max-w-xl mx-auto text-sm">
-            Pelajari syarat, ketentuan, serta kebijakan perjalanan SeeBus untuk memastikan perjalanan Anda aman, nyaman,
-            dan sesuai dengan peraturan yang berlaku.
-          </p>
+          <h1 className="text-white text-2xl md:text-3xl font-bold mb-2">{k.heroJudul}</h1>
+          <p className="text-white/80 max-w-xl mx-auto text-sm">{k.heroDeskripsi}</p>
         </div>
       </section>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6">
-        <p className="text-xs text-gray-400">
-          <Link to="/perusahaan" className="hover:text-navy-900">
-            Perusahaan
-          </Link>{' '}
-          {'>'} Kebijakan Perjalanan
-        </p>
-      </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 space-y-10">
         <div>
           <div className="flex items-center gap-2 mb-4">
             <ShieldCheck className="w-5 h-5 text-brand-red" />
-            <h2 className="font-bold text-navy-900">Keselamatan & Kenyamanan</h2>
+            <h2 className="font-bold text-navy-900">{k.keselamatanJudul}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InfoCard title="Keselamatan">
-              <p>
-                Keselamatan penumpang adalah prioritas utama SeeBus. Seluruh perjalanan dikawal armada bus yang
-                beroperasi sesuai ketentuan operator, terpasang standar keamanan yang berlaku.
-              </p>
+            <InfoCard title={k.keselamatanTitle}>
+              <p>{k.keselamatanDesk}</p>
             </InfoCard>
-            <InfoCard title="Kenyamanan">
-              <p>
-                SeeBus bekerja sama dengan operator untuk memberikan pengalaman perjalanan yang nyaman, mulai dari
-                proses keberangkatan hingga tiba di tujuan.
-              </p>
+            <InfoCard title={k.kenyamananTitle}>
+              <p>{k.kenyamananDesk}</p>
             </InfoCard>
           </div>
         </div>
@@ -75,35 +60,28 @@ export default function KebijakanPerjalanan() {
         <div>
           <div className="flex items-center gap-2 mb-4">
             <Luggage className="w-5 h-5 text-brand-red" />
-            <h2 className="font-bold text-navy-900">Kebijakan Bagasi</h2>
+            <h2 className="font-bold text-navy-900">{k.bagasiJudul}</h2>
           </div>
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-400 border-b border-gray-100">
-                  <th className="pb-3 font-medium">Kategori</th>
-                  <th className="pb-3 font-medium">Ketentuan</th>
+                  <th className="pb-3 font-medium">{k.bagasiKategori}</th>
+                  <th className="pb-3 font-medium">{k.bagasiKetentuan}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 <tr>
-                  <td className="py-3 font-semibold text-navy-900 align-top w-40">Bagasi kabin</td>
-                  <td className="py-3 text-gray-500">
-                    Maksimal 7 kg per penumpang dan harus dapat disimpan dengan aman di kabin.
-                  </td>
+                  <td className="py-3 font-semibold text-navy-900 align-top w-40">{k.bagasiKabinTitle}</td>
+                  <td className="py-3 text-gray-500">{k.bagasiKabinDesk}</td>
                 </tr>
                 <tr>
-                  <td className="py-3 font-semibold text-navy-900 align-top">Bagasi utama</td>
-                  <td className="py-3 text-gray-500">
-                    Mengikuti ketentuan masing-masing operator bus, informal tersedia saat proses pemesanan.
-                  </td>
+                  <td className="py-3 font-semibold text-navy-900 align-top">{k.bagasiUtamaTitle}</td>
+                  <td className="py-3 text-gray-500">{k.bagasiUtamaDesk}</td>
                 </tr>
                 <tr>
-                  <td className="py-3 font-semibold text-navy-900 align-top">Barang Terlarang</td>
-                  <td className="py-3 text-gray-500">
-                    Dilarang membawa barang berbahaya, bahan mudah terbakar, senjata, narkotika, atau barang lain yang
-                    melanggar hukum.
-                  </td>
+                  <td className="py-3 font-semibold text-navy-900 align-top">{k.bagasiTerlarangTitle}</td>
+                  <td className="py-3 text-gray-500">{k.bagasiTerlarangDesk}</td>
                 </tr>
               </tbody>
             </table>
@@ -113,50 +91,33 @@ export default function KebijakanPerjalanan() {
         <div>
           <div className="flex items-center gap-2 mb-4">
             <ClipboardList className="w-5 h-5 text-brand-red" />
-            <h2 className="font-bold text-navy-900">Panduan Check-in</h2>
+            <h2 className="font-bold text-navy-900">{k.checkinJudul}</h2>
           </div>
           <div className="card space-y-5">
-            <StepItem
-              number={1}
-              title="Konfirmasi Tiket"
-              desc="Pastikan Anda telah menerima e-tiket melalui email atau atau bisa mengaksesnya melalui akun SeeBus sebelum keberangkatan."
-            />
-            <StepItem
-              number={2}
-              title="Waktu Kedatangan"
-              desc="Diusahakan tiba di titik keberangkatan minimal 30 menit sebelum jadwal keberangkatan untuk proses pemeriksaan dan boarding."
-            />
-            <StepItem
-              number={3}
-              title="Identitas"
-              desc="Penumpang wajib membawa kartu identitas yang masih berlaku dan sesuai dengan data yang digunakan saat pemesanan."
-            />
-            <StepItem
-              number={4}
-              title="Ketepatan Waktu"
-              desc="Operator bus tetap mengizinkan titik keberangkatan sesuai jadwal. Keterlambatan penumpang menjadi tanggung jawab masing-masing."
-            />
+            {k.checkinSteps.map((step, i) => (
+              <StepItem key={step.title} number={i + 1} title={step.title} desc={step.desc} />
+            ))}
           </div>
         </div>
 
         <div>
           <div className="flex items-center gap-2 mb-4">
             <RefreshCw className="w-5 h-5 text-brand-red" />
-            <h2 className="font-bold text-navy-900">Refund & Reschedule</h2>
+            <h2 className="font-bold text-navy-900">{k.refundJudul}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InfoCard title="Pengembalian Dana">
+            <InfoCard title={k.pengembalianDanaTitle}>
               <ul className="list-disc list-inside space-y-1">
-                <li>{'>'} 24 jam sebelum: Refund 75% dari harga tiket.</li>
-                <li>{'<'} 24 jam sebelum: Tiket hangus (tidak ada refund).</li>
-                <li>Proses refund memerlukan waktu 7–14 hari kerja.</li>
+                {k.pengembalianDanaItems.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
               </ul>
             </InfoCard>
-            <InfoCard title="Perubahan Jadwal">
+            <InfoCard title={k.perubahanJadwalTitle}>
               <ul className="list-disc list-inside space-y-1">
-                <li>Hanya dilakukan satu kali per tiket.</li>
-                <li>Biaya admin Rp 20.000 + selisih harga tiket.</li>
-                <li>Maksimal 12 jam sebelum jadwal awal.</li>
+                {k.perubahanJadwalItems.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
               </ul>
             </InfoCard>
           </div>
@@ -166,24 +127,21 @@ export default function KebijakanPerjalanan() {
       <section className="max-w-7xl mx-auto px-4 md:px-6 pb-14">
         <div className="bg-navy-900 rounded-xl px-6 md:px-12 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <h3 className="text-white font-bold text-lg mb-1">Siap Untuk Perjalanan Anda?</h3>
-            <p className="text-white/70 text-sm max-w-md">
-              Pastikan Anda telah memahami seluruh kebijakan perjalanan sebelum melakukan pemesanan agar perjalanan
-              bersama SeeBus berjalan lancar dan nyaman.
-            </p>
+            <h3 className="text-white font-bold text-lg mb-1">{k.ctaJudul}</h3>
+            <p className="text-white/70 text-sm max-w-md">{k.ctaDeskripsi}</p>
           </div>
           <div className="flex gap-3 shrink-0">
             <Link
               to="/"
               className="bg-brand-red text-white px-5 py-3 rounded-xl shadow-sm hover:bg-brand-red/90 transition-colors font-medium"
             >
-              Pesan Tiket
+              {k.pesanTiket}
             </Link>
             <Link
               to="/hubungi-kami"
               className="border border-white/30 text-white px-5 py-3 rounded-xl hover:bg-white/10 transition-colors font-medium"
             >
-              Hubungi Kami
+              {t.nav.hubungiKami}
             </Link>
           </div>
         </div>

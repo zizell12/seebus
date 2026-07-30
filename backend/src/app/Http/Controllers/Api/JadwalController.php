@@ -4,17 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
-use App\Models\Route;
-use App\Services\AvailabilityGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 class JadwalController extends Controller
 {
     /**
      * GET /api/jadwal?dari=Jember&tujuan=Surabaya&tanggal=2026-07-20
      * Cari jadwal bus berdasarkan kota asal, tujuan, dan tanggal.
+     *
+     * Catatan: hanya menampilkan jadwal yang memang sudah ada (di-seed atau
+     * ditambahkan lewat panel admin). Tidak ada lagi generate jadwal
+     * on-demand di sini, supaya data yang tampil selalu jadwal "nyata".
      */
     public function index(Request $request): JsonResponse
     {
@@ -23,25 +24,6 @@ class JadwalController extends Controller
             'tujuan' => 'required|string',
             'tanggal' => 'required|date',
         ]);
-
-        // Kalau tanggal yang dicari hari ini atau di masa depan dan belum ada
-        // jadwalnya sama sekali, generate dulu on-demand supaya tidak pernah kosong.
-        if (Carbon::parse($request->tanggal)->startOfDay()->gte(Carbon::today())) {
-            $routes = Route::query()
-                ->whereHas('originStation.region', fn ($q) => $q->where('rg_city', $request->dari))
-                ->whereHas('destinationStation.region', fn ($q) => $q->where('rg_city', $request->tujuan))
-                ->get();
-
-            foreach ($routes as $route) {
-                $sudahAda = Availability::where('route_id', $route->route_id)
-                    ->where('av_date', $request->tanggal)
-                    ->exists();
-
-                if (! $sudahAda) {
-                    AvailabilityGenerator::ensureForRouteAndDate($route, $request->tanggal);
-                }
-            }
-        }
 
         $jadwal = Availability::query()
             ->with(['route.originStation.region', 'route.destinationStation.region', 'busType.company'])
@@ -57,7 +39,15 @@ class JadwalController extends Controller
             ->get();
 
         $result = $jadwal->map(function ($item) {
-            $kursiTersedia = $item->seats()->where('seat_status', 'empty')->count();
+            $kursiTersedia = $item->seats()
+                ->where(function ($q) {
+                    $q->where('seat_status', 'empty')
+                        ->orWhere(function ($q2) {
+                            $q2->where('seat_status', 'locked')
+                                ->where('seat_locked_until', '<', now());
+                        });
+                })
+                ->count();
 
             return [
                 'availability_id' => $item->availability_id,
@@ -66,6 +56,8 @@ class JadwalController extends Controller
                 'fasilitas' => array_map('trim', explode(',', $item->busType->bt_facilities ?? '')),
                 'dari' => $item->route->originStation->region->rg_city,
                 'tujuan' => $item->route->destinationStation->region->rg_city,
+                'terminal_asal' => $item->route->originStation->stn_name,
+                'terminal_tujuan' => $item->route->destinationStation->stn_name,
                 'tanggal' => $item->av_date->toDateString(),
                 'jam_berangkat' => substr($item->av_time, 0, 5),
                 'durasi_menit' => $item->route->rt_duration_min,
@@ -89,10 +81,15 @@ class JadwalController extends Controller
         $availability = Availability::with('seats')->findOrFail($id);
 
         $seats = $availability->seats->map(function ($seat) {
+            $statusTampil = $seat->seat_status;
+            if ($statusTampil === 'locked' && $seat->seat_locked_until !== null && $seat->seat_locked_until->isPast()) {
+                $statusTampil = 'empty';
+            }
+
             return [
                 'seat_id' => $seat->seat_id,
                 'nomor' => $seat->seat_number,
-                'status' => $seat->seat_status, // empty | locked | booked
+                'status' => $statusTampil, // empty | locked | booked
             ];
         });
 

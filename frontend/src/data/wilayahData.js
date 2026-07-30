@@ -1,3 +1,17 @@
+import jawaBarat from '../assets/jawa-barat.jpg'
+import dkiJakarta from '../assets/dki-jakarta.jpg'
+import jawaTengah from '../assets/jawa-tengah.jpg'
+import jawaTimur from '../assets/jawa-timur.jpg'
+import yogyakarta from '../assets/di-yogyakarta.jpg'
+import banten from '../assets/banten.jpg'
+import bali from '../assets/Bali.jpg'
+import sumateraUtara from '../assets/sumatera-utara.jpg'
+import sumateraBarat from '../assets/sumatera-barat.jpg'
+import sumateraSelatan from '../assets/sumatera-selatan.jpg'
+import riau from '../assets/riau.jpg'
+import jambi from '../assets/jambi.jpg'
+import lampung from '../assets/lampung.jpg'
+
 export const provinsiPopuler = [
   'Jawa Barat',
   'DKI Jakarta',
@@ -15,7 +29,7 @@ export const provinsiPopuler = [
 ]
 export const dataWilayah = {
   'Jawa Barat': {
-    gambar: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=200',
+    gambar: jawaBarat,
     jumlahKota: 27,
     jumlahTerminal: 145,
     kota: [
@@ -50,7 +64,7 @@ export const dataWilayah = {
     ],
   },
   'DKI Jakarta': {
-    gambar: 'https://images.unsplash.com/photo-1555899434-94d1368aa7af?w=200',
+    gambar: dkiJakarta,
     jumlahKota: 6,
     jumlahTerminal: 18,
     kota: [
@@ -79,7 +93,7 @@ export const dataWilayah = {
     ],
   },
   'Jawa Tengah': {
-    gambar: 'https://images.unsplash.com/photo-1596395463970-4c78f3c5e8e0?w=200',
+    gambar: jawaTengah,
     jumlahKota: 29,
     jumlahTerminal: 96,
     kota: [
@@ -108,7 +122,7 @@ export const dataWilayah = {
     ],
   },
   'Jawa Timur': {
-    gambar: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=200',
+    gambar: jawaTimur,
     jumlahKota: 38,
     jumlahTerminal: 122,
     kota: [
@@ -137,7 +151,7 @@ export const dataWilayah = {
     ],
   },
   'DI Yogyakarta': {
-    gambar: 'https://images.unsplash.com/photo-1584810359583-96fc9d6d9c0e?w=200',
+    gambar: yogyakarta,
     jumlahKota: 5,
     jumlahTerminal: 14,
     kota: [
@@ -155,7 +169,7 @@ export const dataWilayah = {
     ],
   },
   Banten: {
-    gambar: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=200',
+    gambar: banten,
     jumlahKota: 8,
     jumlahTerminal: 21,
     kota: [
@@ -173,7 +187,7 @@ export const dataWilayah = {
     ],
   },
   Bali: {
-    gambar: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=200',
+    gambar: bali,
     jumlahKota: 9,
     jumlahTerminal: 12,
     kota: [
@@ -202,7 +216,7 @@ export const dataWilayah = {
     ],
   },
   'Sumatera Utara': {
-    gambar: 'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=200',
+    gambar: sumateraUtara,
     jumlahKota: 33,
     jumlahTerminal: 40,
     kota: [
@@ -231,7 +245,7 @@ export const dataWilayah = {
     ],
   },
   'Sumatera Barat': {
-    gambar: 'https://images.unsplash.com/photo-1600180758890-6b94519a8ba6?w=200',
+    gambar: sumateraBarat,
     jumlahKota: 19,
     jumlahTerminal: 25,
     kota: [
@@ -271,7 +285,7 @@ export const dataWilayah = {
     ],
   },
   'Sumatera Selatan': {
-    gambar: 'https://images.unsplash.com/photo-1596395463970-4c78f3c5e8e0?w=200',
+    gambar: sumateraSelatan,
     jumlahKota: 17,
     jumlahTerminal: 22,
     kota: [
@@ -289,7 +303,7 @@ export const dataWilayah = {
     ],
   },
   Riau: {
-    gambar: 'https://images.unsplash.com/photo-1580820267682-426da823b514?w=200',
+    gambar: riau,
     jumlahKota: 12,
     jumlahTerminal: 15,
     kota: [
@@ -307,7 +321,7 @@ export const dataWilayah = {
     ],
   },
   Jambi: {
-    gambar: 'https://images.unsplash.com/photo-1580820267682-426da823b514?w=200',
+    gambar: jambi,
     jumlahKota: 11,
     jumlahTerminal: 13,
     kota: [
@@ -336,7 +350,7 @@ export const dataWilayah = {
     ],
   },
   Lampung: {
-    gambar: 'https://images.unsplash.com/photo-1600180758890-6b94519a8ba6?w=200',
+    gambar: lampung,
     jumlahKota: 15,
     jumlahTerminal: 20,
     kota: [

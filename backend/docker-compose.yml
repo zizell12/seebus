@@ -15,6 +15,30 @@ services:
       - seebus_net
       - proxy_net
 
+  scheduler:
+    build:
+      context: .
+    container_name: seebus_scheduler
+    restart: always
+    environment:
+      - TZ=Asia/Jakarta
+    volumes:
+      - ./src:/var/www
+      - data_seebus_vendor:/var/www/vendor
+      - data_seebus_storage:/var/www/storage/framework
+      - ./src/storage:/var/www/storage
+    depends_on:
+      - app
+    networks:
+      - seebus_net
+    # Menjalankan scheduler Laravel terus-menerus (cek tiap menit apakah ada
+    # command terjadwal yang perlu jalan, termasuk bookings:release-expired-holds
+    # yang didaftarkan di bootstrap/app.php). Composer install & migrate sudah
+    # dilakukan oleh service "app", jadi di sini cukup tunggu vendor/ siap lalu
+    # langsung jalankan scheduler-nya.
+    command: >
+      sh -c "while [ ! -f vendor/autoload.php ]; do sleep 2; done && php artisan schedule:work"
+
   webserver:
     image: nginx:alpine
     container_name: seebus_nginx

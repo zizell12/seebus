@@ -2,8 +2,10 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bus } from 'lucide-react'
 import { api } from '../utils/api'
+import { useLanguage } from '../context/LanguageContext'
 export default function Masuk() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [form, setForm] = useState({
     email: '',
     password: '',
@@ -17,7 +19,7 @@ export default function Masuk() {
     try {
       const { token, user } = await api.login(form)
       if (user?.usr_role !== 'admin') {
-        setError('Akun ini bukan akun admin.')
+        setError(t.masukPage.bukanAdmin)
         return
       }
       localStorage.setItem('token', token)
@@ -34,14 +36,14 @@ export default function Masuk() {
         <div className="flex items-center gap-2 text-navy-900 font-extrabold text-xl mb-6 justify-center">
           <Bus className="w-6 h-6 text-brand-red" /> SeeBus
         </div>
-        <h1 className="text-xl font-bold text-navy-900 mb-1 text-center">Masuk Admin</h1>
-        <p className="text-sm text-gray-500 text-center mb-6">Khusus untuk tim internal SeeBus.</p>
+        <h1 className="text-xl font-bold text-navy-900 mb-1 text-center">{t.masukPage.judul}</h1>
+        <p className="text-sm text-gray-500 text-center mb-6">{t.masukPage.subJudul}</p>
 
         {error && <p className="text-sm text-brand-red mb-3">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-navy-900">Email</label>
+            <label className="text-sm font-medium text-navy-900">{t.masukPage.labelEmail}</label>
             <input
               type="email"
               required
@@ -56,7 +58,7 @@ export default function Masuk() {
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-navy-900">Password</label>
+            <label className="text-sm font-medium text-navy-900">{t.masukPage.labelPassword}</label>
             <input
               type="password"
               required
@@ -71,7 +73,7 @@ export default function Masuk() {
             />
           </div>
           <button disabled={loading} className="btn-primary w-full">
-            {loading ? 'Memproses...' : 'Masuk'}
+            {loading ? t.masukPage.memproses : t.masukPage.masuk}
           </button>
         </form>
       </div>

@@ -1,4 +1,16 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://seebus.local/api'
+// session_id dipakai backend untuk tahu siapa pemilik lock sementara sebuah
+// kursi (lihat KursiController::lock). Dibuat sekali per tab browser dan
+// disimpan di sessionStorage supaya tetap sama selama sesi booking berjalan.
+export function getSessionId() {
+  const key = 'seebus_session_id'
+  let id = sessionStorage.getItem(key)
+  if (!id) {
+    id = (crypto.randomUUID && crypto.randomUUID()) || `sid-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    sessionStorage.setItem(key, id)
+  }
+  return id
+}
 async function handleResponse(res) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -36,7 +48,7 @@ export const api = {
     const json = await handleResponse(res)
     return json.data
   },
-  kirimPesan: async ({ nama, email, pesan }) => {
+  kirimPesan: async ({ nama, email, subjek, pesan }) => {
     const res = await fetch(`${API_URL}/pesan`, {
       method: 'POST',
       headers: {
@@ -45,6 +57,7 @@ export const api = {
       body: JSON.stringify({
         nama,
         email,
+        subjek,
         pesan,
       }),
     })
@@ -80,6 +93,34 @@ export const api = {
     })
     return handleResponse(res)
   },
+  lockKursi: async ({ availability_id, nomor_kursi }) => {
+    const res = await fetch(`${API_URL}/kursi/lock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        availability_id,
+        nomor_kursi,
+        session_id: getSessionId(),
+      }),
+    })
+    return handleResponse(res)
+  },
+  unlockKursi: async ({ availability_id, nomor_kursi }) => {
+    const res = await fetch(`${API_URL}/kursi/unlock`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        availability_id,
+        nomor_kursi,
+        session_id: getSessionId(),
+      }),
+    })
+    return handleResponse(res)
+  },
   createBooking: async (payload) => {
     const res = await fetch(`${API_URL}/booking`, {
       method: 'POST',
@@ -107,6 +148,86 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ booking_id, orderID }),
+    })
+    return handleResponse(res)
+  },
+  getAdminPesan: async ({ status, cari, page } = {}) => {
+    const params = new URLSearchParams()
+    if (status) params.set('status', status)
+    if (cari) params.set('cari', cari)
+    if (page) params.set('page', page)
+    const res = await fetch(`${API_URL}/admin/pesan?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tandaiPesanDibaca: async (id) => {
+    const res = await fetch(`${API_URL}/admin/pesan/${id}/baca`, {
+      method: 'PATCH',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  hapusPesan: async (id) => {
+    const res = await fetch(`${API_URL}/admin/pesan/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminJadwal: async ({ tanggal, page } = {}) => {
+    const params = new URLSearchParams()
+    if (tanggal) params.set('tanggal', tanggal)
+    if (page) params.set('page', page)
+    const res = await fetch(`${API_URL}/admin/jadwal?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminJadwalOptions: async () => {
+    const res = await fetch(`${API_URL}/admin/jadwal-options`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahJadwal: async (payload) => {
+    const res = await fetch(`${API_URL}/admin/jadwal`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahJadwal: async (id, payload) => {
+    const res = await fetch(`${API_URL}/admin/jadwal/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  nonaktifkanJadwal: async (id) => {
+    const res = await fetch(`${API_URL}/admin/jadwal/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
     })
     return handleResponse(res)
   },

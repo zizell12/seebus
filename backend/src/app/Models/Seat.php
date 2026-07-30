@@ -15,6 +15,10 @@ class Seat extends Model
         'seat_locked_session', 'seat_locked_until',
     ];
 
+    protected $casts = [
+        'seat_locked_until' => 'datetime',
+    ];
+
     public function availability()
     {
         return $this->belongsTo(Availability::class, 'availability_id', 'availability_id');

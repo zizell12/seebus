@@ -16,15 +16,15 @@ function TempatWisataCard({ nama, gambar, desk }) {
   )
 }
 export default function WisataDetail() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const { slug } = useParams()
   const kota = kotaWisataPopuler.find((k) => k.slug === slug)
   if (!kota) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-20 text-center">
-        <p className="text-gray-500">Destinasi tidak ditemukan.</p>
+        <p className="text-gray-500">{t.wisataDetailPage.tidakDitemukan}</p>
         <Link to="/" className="text-brand-red text-sm font-medium">
-          Kembali ke Beranda
+          {t.wisataDetailPage.kembaliBeranda}
         </Link>
       </div>
     )
@@ -48,15 +48,6 @@ export default function WisataDetail() {
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6">
-        <p className="text-xs text-gray-400">
-          <Link to="/" className="hover:text-navy-900">
-            Beranda
-          </Link>{' '}
-          {'>'} {kota.nama}
-        </p>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
         <h1 className="text-2xl md:text-3xl font-bold text-brand-red mb-6">{kota.nama}</h1>
 
@@ -66,17 +57,17 @@ export default function WisataDetail() {
         </div>
 
         <div className="mb-10">
-          <h2 className="text-lg font-bold text-navy-900 mb-3">Deskripsi</h2>
-          <p className="text-sm text-gray-500 leading-relaxed">{kota.deskripsi}</p>
+          <h2 className="text-lg font-bold text-navy-900 mb-3">{t.wisataDetailPage.deskripsiJudul}</h2>
+          <p className="text-sm text-gray-500 leading-relaxed">{kota.deskripsi[lang]}</p>
         </div>
 
         <div>
           <h2 className="text-lg font-bold text-navy-900 mb-6">
-            Wisata Yang Wajib Anda Kunjungi Saat Liburan di {kota.nama}
+            {t.wisataDetailPage.wajibDikunjungi.replace('{kota}', kota.nama)}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {kota.tempatWisata?.map((tw) => (
-              <TempatWisataCard key={tw.nama} {...tw} />
+              <TempatWisataCard key={tw.nama} nama={tw.nama} gambar={tw.gambar} desk={tw.desk[lang]} />
             ))}
           </div>
         </div>

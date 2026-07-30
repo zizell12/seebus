@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Outlet } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Beranda from './pages/Beranda'
@@ -10,42 +10,60 @@ import KebijakanPerjalanan from './pages/KebijakanPerjalanan'
 import PusatBantuan from './pages/PusatBantuan'
 import Masuk from './pages/Masuk'
 import RequireAdmin from './components/RequireAdmin'
+import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminJadwal from './pages/admin/AdminJadwal'
 import WisataDetail from './pages/WisataDetail'
 import HasilPencarian from './pages/booking/HasilPencarian'
 import DataPenumpang from './pages/booking/DataPenumpang'
 import Pembayaran from './pages/booking/Pembayaran'
 import PembayaranBerhasil from './pages/booking/PembayaranBerhasil'
-export default function App() {
+
+// Layout untuk halaman customer, pakai Navbar & Footer customer seperti biasa.
+function CustomerLayout() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<Beranda />} />
-          <Route path="/wilayah" element={<Wilayah />} />
-          <Route path="/perusahaan" element={<Perusahaan />} />
-          <Route path="/hubungi-kami" element={<HubungiKami />} />
-          <Route path="/kebijakan-perjalanan" element={<KebijakanPerjalanan />} />
-          <Route path="/pusat-bantuan" element={<PusatBantuan />} />
-          <Route path="/masuk" element={<Masuk />} />
-          <Route
-            path="/admin"
-            element={
-              <RequireAdmin>
-                <AdminDashboard />
-              </RequireAdmin>
-            }
-          />
-          <Route path="/wisata/:slug" element={<WisataDetail />} />
-
-          <Route path="/pencarian" element={<HasilPencarian />} />
-          <Route path="/pemesanan/penumpang" element={<DataPenumpang />} />
-          <Route path="/pemesanan/pembayaran" element={<Pembayaran />} />
-          <Route path="/pemesanan/berhasil" element={<PembayaranBerhasil />} />
-        </Routes>
+        <Outlet />
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<CustomerLayout />}>
+        <Route path="/" element={<Beranda />} />
+        <Route path="/wilayah" element={<Wilayah />} />
+        <Route path="/perusahaan" element={<Perusahaan />} />
+        <Route path="/hubungi-kami" element={<HubungiKami />} />
+        <Route path="/kebijakan-perjalanan" element={<KebijakanPerjalanan />} />
+        <Route path="/pusat-bantuan" element={<PusatBantuan />} />
+        <Route path="/masuk" element={<Masuk />} />
+        <Route path="/wisata/:slug" element={<WisataDetail />} />
+
+        <Route path="/pencarian" element={<HasilPencarian />} />
+        <Route path="/pemesanan/penumpang" element={<DataPenumpang />} />
+        <Route path="/pemesanan/pembayaran" element={<Pembayaran />} />
+        <Route path="/pemesanan/berhasil" element={<PembayaranBerhasil />} />
+      </Route>
+
+      {/* Panel admin sengaja punya layout sendiri (header & footer khusus
+          admin) supaya navigasi di dalamnya selalu tetap di halaman admin,
+          tidak nyasar ke halaman customer. */}
+      <Route
+        element={
+          <RequireAdmin>
+            <AdminLayout />
+          </RequireAdmin>
+        }
+      >
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/jadwal" element={<AdminJadwal />} />
+      </Route>
+    </Routes>
   )
 }

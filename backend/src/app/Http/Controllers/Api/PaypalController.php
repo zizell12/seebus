@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\TicketMail;
 use App\Models\Booking;
+use App\Models\Seat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -89,6 +90,16 @@ class PaypalController extends Controller
 
         $booking->update([
             'bk_status' => 'paid',
+        ]);
+
+        // Kursi yang tadinya cuma 'locked' sementara (15 menit) sekarang dikunci
+        // permanen sebagai 'booked', supaya tidak bisa dipesan orang lain lagi
+        // walaupun proses pembayaran ini memakan waktu lebih dari masa lock awal.
+        $seatIds = $booking->passengers()->pluck('seat_id');
+        Seat::whereIn('seat_id', $seatIds)->update([
+            'seat_status' => 'booked',
+            'seat_locked_session' => null,
+            'seat_locked_until' => null,
         ]);
 
         $booking->load('contact');
