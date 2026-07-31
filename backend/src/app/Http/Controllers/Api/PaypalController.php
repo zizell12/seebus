@@ -52,7 +52,18 @@ class PaypalController extends Controller
             return Response::json(['message' => 'Gagal membuat order PayPal.', 'detail' => $response->json()], 500);
         }
 
-        return Response::json(['data' => $response->json()]);
+        $orderData = $response->json();
+
+        // Simpan orderID PayPal ini ke booking-nya. Wajib, supaya nanti saat
+        // capture-order dipanggil kita bisa memverifikasi bahwa orderID yang
+        // di-capture memang dibuat untuk booking_id ini, bukan orderID milik
+        // booking lain yang "dipinjam" client untuk menandai booking lain
+        // sebagai paid tanpa benar-benar membayar sejumlah harga booking itu.
+        if (! empty($orderData['id'])) {
+            $booking->update(['bk_paypal_order_id' => $orderData['id']]);
+        }
+
+        return Response::json(['data' => $orderData]);
     }
 
     public function captureOrder(Request $request): JsonResponse
@@ -65,6 +76,25 @@ class PaypalController extends Controller
         $booking = Booking::findOrFail($data['booking_id']);
         if ($booking->bk_status !== 'pending') {
             return Response::json(['message' => 'Booking harus pending sebelum capture pembayaran.'], 422);
+        }
+
+        // Penting: orderID yang mau di-capture HARUS sama dengan orderID yang
+        // tercatat dibuat khusus untuk booking ini (lihat createOrder di
+        // atas). Tanpa pengecekan ini, orderID PayPal yang sudah COMPLETED
+        // untuk booking lain (misalnya booking murah) bisa "dipinjam" lewat
+        // request ini dengan booking_id yang berbeda (booking lain, lebih
+        // mahal) untuk menandainya paid begitu saja tanpa benar-benar
+        // membayar sejumlah harga booking tersebut.
+        if (empty($booking->bk_paypal_order_id) || $booking->bk_paypal_order_id !== $data['orderID']) {
+            Log::warning('Percobaan capture PayPal dengan orderID yang tidak cocok untuk booking ini', [
+                'booking_id' => $booking->booking_id,
+                'orderID_diminta' => $data['orderID'],
+                'orderID_tercatat' => $booking->bk_paypal_order_id,
+            ]);
+
+            return Response::json([
+                'message' => 'orderID tidak cocok dengan booking ini.',
+            ], 403);
         }
 
         $paypalUrl = config('services.paypal.base_url');

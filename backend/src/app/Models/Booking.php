@@ -15,7 +15,7 @@ class Booking extends Model
         'bk_code', 'user_id', 'availability_id', 'contact_id',
         'bk_adult_count', 'bk_child_count', 'bk_infant_count',
         'bk_notes', 'bk_net_price', 'bk_publish_price', 'bk_total_price',
-        'bk_status',
+        'bk_status', 'bk_paypal_order_id',
     ];
 
     protected static function booted()
