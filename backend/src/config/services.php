@@ -20,6 +20,13 @@ return [
     'secret' => env('PAYPAL_SECRET'),
     ],
 
+    // Base URL frontend React (bukan backend), dipakai untuk menyusun link
+    // "Lanjutkan Pembayaran" di email booking pending. Default localhost
+    // dev server Vite kalau env tidak di-set.
+    'frontend' => [
+        'url' => env('FRONTEND_URL', 'http://localhost:5173'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

@@ -13,6 +13,7 @@ const initialState = {
   },
   selectedBus: null,
   booking_id: null,
+  booking_code: null,
   harga: null,
   selectedSeats: null,
   passengers: [],
@@ -60,6 +61,11 @@ export function BookingProvider({ children }) {
       ...b,
       booking_id: bookingId,
     }))
+  const setBookingCode = (bookingCode) =>
+    setBooking((b) => ({
+      ...b,
+      booking_code: bookingCode,
+    }))
   const setHarga = (harga) =>
     setBooking((b) => ({
       ...b,
@@ -76,6 +82,43 @@ export function BookingProvider({ children }) {
       payment,
     }))
   const resetBooking = () => setBooking(initialState)
+  // Dipakai halaman "Lanjutkan Pembayaran" (LanjutkanPembayaran.jsx) untuk
+  // mengisi ulang BookingContext dari data booking pending yang diambil
+  // lewat api.lookupBooking, dengan bentuk yang sama seperti yang dihasilkan
+  // alur booking normal (SearchForm -> HasilPencarian -> DataPenumpang),
+  // supaya halaman Pembayaran.jsx bisa langsung dipakai lagi tanpa perubahan.
+  const hydrateFromLookup = (data) =>
+    setBooking((b) => ({
+      ...b,
+      booking_id: data.booking_id,
+      booking_code: data.bk_code,
+      search: {
+        ...b.search,
+        dari: data.jadwal?.dari ?? '',
+        tujuan: data.jadwal?.tujuan ?? '',
+        tanggal: data.jadwal?.tanggal ?? '',
+      },
+      selectedBus: {
+        jamBerangkat: data.jadwal?.jam_berangkat ?? '',
+        jamTiba: '',
+        kelas: data.jadwal?.kelas ?? '',
+      },
+      selectedSeats: {
+        nomor: data.kursi ?? [],
+      },
+      passengers: data.passengers ?? [],
+      contact: {
+        nama: data.contact?.ct_name ?? '',
+        email: data.contact?.ct_email ?? '',
+        phone: data.contact?.ct_phone ?? '',
+        kewarganegaraan: data.contact?.ct_nationality ?? 'Indonesia',
+      },
+      harga: {
+        publish: data.bk_publish_price ?? 0,
+        biayaLayanan: data.biaya_layanan ?? 0,
+        total: data.bk_total_price ?? 0,
+      },
+    }))
   return (
     <BookingContext.Provider
       value={{
@@ -86,10 +129,12 @@ export function BookingProvider({ children }) {
         setPassengers,
         setContact,
         setBookingId,
+        setBookingCode,
         setHarga,
         setNotes,
         setPayment,
         resetBooking,
+        hydrateFromLookup,
       }}
     >
       {children}

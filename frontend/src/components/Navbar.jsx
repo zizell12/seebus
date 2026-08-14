@@ -1,12 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { Menu, X, Bus, ChevronDown } from 'lucide-react'
+import { Menu, X, Bus, ChevronDown, Clock } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
+import { getPendingBooking } from '../utils/pendingBooking'
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { lang, setLang, t } = useLanguage()
   const [langOpen, setLangOpen] = useState(false)
   const langRef = useRef(null)
+  const [hasPending, setHasPending] = useState(false)
+  useEffect(() => {
+    function refreshPending() {
+      setHasPending(!!getPendingBooking())
+    }
+    refreshPending()
+    // Booking pending bisa berubah dari tab/halaman lain (mis. baru saja
+    // selesai bikin booking, atau baru saja bayar) - dengarkan event custom
+    // yang di-dispatch oleh utils/pendingBooking.js, event storage bawaan
+    // browser (kalau berubah dari tab lain), dan saat tab ini difokus lagi
+    // (buat jaga-jaga kalau kadaluwarsa selagi ditinggal).
+    window.addEventListener('seebus-pending-booking-changed', refreshPending)
+    window.addEventListener('storage', refreshPending)
+    window.addEventListener('focus', refreshPending)
+    return () => {
+      window.removeEventListener('seebus-pending-booking-changed', refreshPending)
+      window.removeEventListener('storage', refreshPending)
+      window.removeEventListener('focus', refreshPending)
+    }
+  }, [])
   useEffect(() => {
     function handleClickOutside(e) {
       if (langRef.current && !langRef.current.contains(e.target)) {
@@ -55,6 +76,15 @@ export default function Navbar() {
               {m.label}
             </NavLink>
           ))}
+          {hasPending && (
+            <Link
+              to="/pemesanan/lanjutkan"
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-red rounded-full pl-3 pr-3.5 py-1.5 hover:bg-red-600 transition-colors"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              {t.footer.lanjutkanPembayaran}
+            </Link>
+          )}
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
@@ -101,6 +131,17 @@ export default function Navbar() {
               {m.label}
             </NavLink>
           ))}
+
+          {hasPending && (
+            <Link
+              to="/pemesanan/lanjutkan"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-1.5 text-sm font-semibold text-white bg-brand-red rounded-lg py-2"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              {t.footer.lanjutkanPembayaran}
+            </Link>
+          )}
 
           <div className="flex gap-2 pt-2">
             {['id', 'en'].map((l) => (

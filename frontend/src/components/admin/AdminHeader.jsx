@@ -1,14 +1,14 @@
 import React from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Inbox, CalendarClock, ExternalLink, LogOut } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Menu, ExternalLink, LogOut } from 'lucide-react'
 import { api } from '../../utils/api'
 import { useLanguage } from '../../context/LanguageContext'
 
-// Header khusus panel admin. Sengaja dipisah dari <Navbar /> milik customer
-// supaya link-link di dalamnya (Pesan Kontak, Jadwal Bus, dst) selalu
-// mengarah ke halaman admin lain, bukan ke halaman customer yang bikin
-// admin "terjebak" harus klik tombol kembali di pojok kiri atas.
-export default function AdminHeader() {
+// Topbar tipis di panel admin. Navigasi menu (Pesan Kontak, Jadwal Bus, dst)
+// sudah dipindah ke <AdminSidebar />; topbar ini cuma menyisakan tombol buka
+// sidebar (mobile), "Lihat Situs", dan "Keluar" supaya selalu terlihat di
+// halaman admin manapun.
+export default function AdminHeader({ onToggleSidebar }) {
   const { t } = useLanguage()
   const navigate = useNavigate()
 
@@ -23,29 +23,20 @@ export default function AdminHeader() {
     }
   }
 
-  const navLinkClass = ({ isActive }) =>
-    `inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg transition-colors ${
-      isActive ? 'bg-navy-900 text-white' : 'text-gray-500 hover:bg-gray-100'
-    }`
-
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-6">
-          <Link to="/admin" className="font-extrabold text-navy-900 text-lg shrink-0">
-            {t.adminLayout.brand}
-          </Link>
-          <nav className="hidden sm:flex items-center gap-1">
-            <NavLink to="/admin" end className={navLinkClass}>
-              <Inbox className="w-4 h-4" /> {t.adminLayout.menuPesan}
-            </NavLink>
-            <NavLink to="/admin/jadwal" className={navLinkClass}>
-              <CalendarClock className="w-4 h-4" /> {t.adminLayout.menuJadwal}
-            </NavLink>
-          </nav>
-        </div>
+      <div className="px-4 md:px-6 h-16 flex items-center justify-between gap-4">
+        <button
+          onClick={onToggleSidebar}
+          className="text-gray-500 hover:text-gray-700"
+          aria-label={t.adminLayout.bukaMenu}
+        >
+          <Menu className="w-5.5 h-5.5" />
+        </button>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <span className="sm:hidden font-extrabold text-navy-900">{t.adminLayout.brand}</span>
+
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <a
             href="/"
             target="_blank"
@@ -62,15 +53,6 @@ export default function AdminHeader() {
           </button>
         </div>
       </div>
-
-      <nav className="sm:hidden flex items-center gap-1 px-4 pb-3">
-        <NavLink to="/admin" end className={navLinkClass}>
-          <Inbox className="w-4 h-4" /> {t.adminLayout.menuPesan}
-        </NavLink>
-        <NavLink to="/admin/jadwal" className={navLinkClass}>
-          <CalendarClock className="w-4 h-4" /> {t.adminLayout.menuJadwal}
-        </NavLink>
-      </nav>
     </header>
   )
 }

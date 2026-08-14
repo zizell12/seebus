@@ -7,12 +7,13 @@ import BookingSummaryBar from '../../components/BookingSummaryBar'
 import { useBooking } from '../../context/BookingContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../utils/api'
+import { clearPendingBooking } from '../../utils/pendingBooking'
 import backgrounddb from '../../assets/background-db.png'
 export default function Pembayaran() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
   const { booking, setPayment } = useBooking()
-  const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id, harga } = booking
+  const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id, booking_code, harga } = booking
   const totalHarga = harga?.total ?? 0
   const hargaPublish = harga?.publish ?? 0
   const biayaLayanan = harga?.biayaLayanan ?? 0
@@ -42,6 +43,20 @@ export default function Pembayaran() {
       <div className="max-w-md mx-auto px-4 md:px-6 pt-8 pb-14">
         <div className="card">
           <h2 className="font-bold text-navy-900 mb-4">{t.pembayaranPage.rincianPemesanan}</h2>
+
+          {booking_code && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-navy-900">
+              <p>
+                {lang === 'en' ? 'Booking code' : 'Kode booking'}:{' '}
+                <span className="font-mono font-bold tracking-wider">{booking_code}</span>
+              </p>
+              <p className="mt-1 text-gray-500">
+                {lang === 'en'
+                  ? "We've also emailed this code with a link to continue payment later, in case you leave this page."
+                  : 'Kode ini juga sudah kami kirim ke email Anda beserta tautan untuk melanjutkan pembayaran nanti, jaga-jaga kalau Anda meninggalkan halaman ini.'}
+              </p>
+            </div>
+          )}
 
           <div className="flex items-start gap-2 text-sm text-navy-900 mb-3">
             <MapPin className="w-4 h-4 text-brand-red mt-0.5 shrink-0" />
@@ -100,6 +115,7 @@ export default function Pembayaran() {
               onApprove={async (data) => {
                 try {
                   await api.capturePaypalOrder({ booking_id, orderID: data.orderID })
+                  clearPendingBooking()
                   setPayment({
                     metode: 'paypal',
                     status: 'success',

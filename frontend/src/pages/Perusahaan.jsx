@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Search,
   MapPin,
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
+import { api } from '../utils/api'
 
 import backgroundPerusahaan from '../assets/background-db.png'
 import ceoImage from '../assets/ceo.jpg'
@@ -54,7 +55,7 @@ function StatItem({ value, label }) {
   )
 }
 
-function MissionSection({ t }) {
+function MissionSection({ t, c }) {
   return (
     <section className="max-w-7xl mx-auto px-4 md:px-6 py-14">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch mb-8">
@@ -64,7 +65,7 @@ function MissionSection({ t }) {
           </h2>
 
           <p className="text-gray-600 italic mb-6">
-            {t.perusahaan.misiKutipan}
+            {c.misi}
           </p>
 
           <div className="flex items-center gap-3">
@@ -88,44 +89,33 @@ function MissionSection({ t }) {
           <ShieldCheck className="w-8 h-8 text-white mb-4" />
 
           <h3 className="text-white font-bold text-lg mb-2">
-            {t.perusahaan.perjalananAmanJudul}
+            {c.amanJudul}
           </h3>
 
           <p className="text-white/70 text-sm">
-            {t.perusahaan.perjalananAmanDeskripsi}
+            {c.amanDeskripsi}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <StatItem
-          value="500+"
-          label={t.perusahaan.statArmada}
-        />
-
-        <StatItem
-          value="120"
-          label={t.perusahaan.statRute}
-        />
-
-        <StatItem
-          value="2 Juta+"
-          label={t.perusahaan.statPenumpang}
-        />
+        <StatItem value={c.statArmada} label={t.perusahaan.statArmada} />
+        <StatItem value={c.statRute} label={t.perusahaan.statRute} />
+        <StatItem value={c.statPenumpang} label={t.perusahaan.statPenumpang} />
       </div>
     </section>
   )
 }
 
-function CommitmentBanner({ t }) {
+function CommitmentBanner({ t, c }) {
   return (
     <section className="bg-navy-900 rounded-xl mx-4 md:mx-8 my-14 px-6 md:px-12 py-14 text-center">
       <h2 className="text-white text-2xl md:text-3xl font-bold mb-3">
-        {t.perusahaan.komitmenJudul}
+        {c.komitmenJudul}
       </h2>
 
       <p className="text-white/70 max-w-xl mx-auto mb-6 text-sm">
-        {t.perusahaan.komitmenDeskripsi}
+        {c.komitmenDeskripsi}
       </p>
 
       <Link
@@ -139,7 +129,36 @@ function CommitmentBanner({ t }) {
 }
 
 export default function Perusahaan() {
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const [profile, setProfile] = useState(null)
+
+  useEffect(() => {
+    api.getCompanyProfile().then(setProfile).catch(() => {})
+  }, [])
+
+  // "c" = konten yang dipakai halaman ini: pakai data dari admin kalau sudah
+  // ada isinya, kalau belum diisi (atau masih memuat) jatuh balik ke teks
+  // bawaan supaya halaman tidak pernah tampil kosong.
+  const c = {
+    badge: profile?.co_badge_sejak || t.perusahaan.badgeSejak,
+    heroJudul: profile?.[`co_hero_judul_${lang}`] || t.perusahaan.heroJudul,
+    heroDeskripsi: profile?.[`co_hero_deskripsi_${lang}`] || t.perusahaan.heroDeskripsi,
+    misi: profile?.[`co_misi_kutipan_${lang}`] || t.perusahaan.misiKutipan,
+    amanJudul: profile?.[`co_aman_judul_${lang}`] || t.perusahaan.perjalananAmanJudul,
+    amanDeskripsi: profile?.[`co_aman_deskripsi_${lang}`] || t.perusahaan.perjalananAmanDeskripsi,
+    statArmada: profile?.co_stat_armada || '500+',
+    statRute: profile?.co_stat_rute || '120',
+    statPenumpang: profile?.co_stat_penumpang || '2 Juta+',
+    komitmenJudul: profile?.[`co_komitmen_judul_${lang}`] || t.perusahaan.komitmenJudul,
+    komitmenDeskripsi: profile?.[`co_komitmen_deskripsi_${lang}`] || t.perusahaan.komitmenDeskripsi,
+    alamat: profile?.co_address || t.perusahaan.alamatKantor,
+    telepon: profile?.co_phone || '+62 21 555 0192',
+    email: profile?.co_email || 'support@seebus.co.id',
+    mapLink:
+      profile?.co_map_lat && profile?.co_map_lng
+        ? `https://maps.google.com/?q=${profile.co_map_lat},${profile.co_map_lng}`
+        : 'https://maps.google.com/?q=-6.2241,106.8022',
+  }
 
   return (
     <div>
@@ -152,15 +171,15 @@ export default function Perusahaan() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-16 md:py-24">
           <div className="max-w-xl">
             <span className="inline-block bg-brand-red text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">
-              {t.perusahaan.badgeSejak}
+              {c.badge}
             </span>
 
             <h1 className="text-navy-900 text-3xl md:text-4xl font-extrabold leading-tight mb-4">
-              {t.perusahaan.heroJudul}
+              {c.heroJudul}
             </h1>
 
             <p className="text-gray-600 mb-6 text-sm md:text-base">
-              {t.perusahaan.heroDeskripsi}
+              {c.heroDeskripsi}
             </p>
 
             <Link
@@ -174,7 +193,7 @@ export default function Perusahaan() {
         </div>
       </section>
 
-      <MissionSection t={t} />
+      <MissionSection t={t} c={c} />
 
       <section className="max-w-7xl mx-auto px-4 md:px-6 py-14 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         <div>
@@ -183,34 +202,16 @@ export default function Perusahaan() {
           </h2>
 
           <div className="space-y-5">
-            <ContactItem
-              icon={MapPin}
-              label={t.perusahaan.labelHeadquarters}
-              value={t.perusahaan.alamatKantor}
-            />
-
-            <ContactItem
-              icon={Phone}
-              label={t.perusahaan.labelPhone}
-              value="+62 21 555 0192"
-            />
-
-            <ContactItem
-              icon={Mail}
-              label={t.perusahaan.labelEmail}
-              value="support@seebus.co.id"
-            />
+            <ContactItem icon={MapPin} label={t.perusahaan.labelHeadquarters} value={c.alamat} />
+            <ContactItem icon={Phone} label={t.perusahaan.labelPhone} value={c.telepon} />
+            <ContactItem icon={Mail} label={t.perusahaan.labelEmail} value={c.email} />
           </div>
         </div>
 
-        <MapPreview
-          image={mapKantor}
-          link="https://maps.google.com/?q=-6.2241,106.8022"
-          alt={t.perusahaan.altPeta}
-        />
+        <MapPreview image={mapKantor} link={c.mapLink} alt={t.perusahaan.altPeta} />
       </section>
 
-      <CommitmentBanner t={t} />
+      <CommitmentBanner t={t} c={c} />
     </div>
   )
 }

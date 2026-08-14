@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\BookingPendingMail;
 use App\Models\Availability;
 use App\Models\Booking;
 use App\Models\Contact;
@@ -11,6 +12,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
@@ -50,7 +53,7 @@ class BookingController extends Controller
 
         $seatIdentifiers = array_map(fn ($passenger) => $passenger['seat_id'], $data['passengers']);
 
-        return DB::transaction(function () use ($data, $request, $seatIdentifiers) {
+        [$booking, $responseData] = DB::transaction(function () use ($data, $request, $seatIdentifiers) {
             $availability = Availability::findOrFail($data['availability_id']);
 
             $seats = Seat::where('availability_id', $data['availability_id'])
@@ -190,7 +193,7 @@ class BookingController extends Controller
                 'seat_locked_until' => Carbon::now()->addMinutes(15),
             ]);
 
-            return response()->json([
+            return [$booking, [
                 'message' => 'Booking berhasil dibuat.',
                 'data' => [
                     'booking_id' => $booking->booking_id,
@@ -200,7 +203,114 @@ class BookingController extends Controller
                     'bk_total_price' => $totalPrice,
                     'biaya_layanan' => self::BIAYA_LAYANAN,
                 ],
-            ], 201);
+            ]];
         });
+
+        // Kirim email berisi kode booking + link "Lanjutkan Pembayaran" SEGERA
+        // setelah booking dibuat (bukan cuma diselipkan di response API yang
+        // tidak pernah ditampilkan lagi di UI manapun). Ini satu-satunya cara
+        // customer yang tidak sempat mencatat kode bookingnya tetap punya
+        // jalan untuk melanjutkan pembayaran nanti. Dikirim di luar transaksi
+        // DB dan dibungkus try/catch supaya kegagalan kirim email (mis. SMTP
+        // down) tidak sampai menggagalkan booking yang sudah tersimpan.
+        $recipientEmail = $booking->contact?->ct_email;
+        if ($recipientEmail && $recipientEmail !== 'customer@example.com') {
+            try {
+                Mail::to($recipientEmail)->send(new BookingPendingMail($booking));
+            } catch (\Throwable $e) {
+                Log::error('Gagal mengirim email konfirmasi booking pending', [
+                    'booking_id' => $booking->booking_id,
+                    'email' => $recipientEmail,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json($responseData, 201);
+    }
+
+    /**
+     * POST /api/booking/lookup
+     *
+     * Dipakai halaman "Lanjutkan Pembayaran": karena data booking di frontend
+     * cuma hidup di BookingContext (React state di memori, hilang begitu tab
+     * ditutup/direfresh) dan sebelumnya TIDAK ADA endpoint sama sekali untuk
+     * mengambil ulang booking yang sudah dibuat, customer yang pembayarannya
+     * masih pending lalu meninggalkan halaman Pembayaran (refresh, salah
+     * pencet back, sinyal putus, dsb) tidak punya cara untuk melanjutkan
+     * pembayaran tersebut dari sisi aplikasi.
+     *
+     * Butuh bk_code (kode booking, dikirim ke customer) DAN email kontak
+     * sekaligus (bukan cuma salah satu) supaya kode booking yang cukup
+     * pendek (8 karakter) tidak bisa ditebak/di-brute-force begitu saja
+     * untuk mengintip data booking orang lain. Endpoint ini juga dibatasi
+     * rate limit lewat middleware 'throttle' di routes/api.php.
+     */
+    public function lookup(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'bk_code' => 'required|string|max:20',
+            'email' => 'required|email|max:100',
+        ]);
+
+        $booking = Booking::with([
+            'contact',
+            'passengers.seat',
+            'availability.route.originStation.region',
+            'availability.route.destinationStation.region',
+            'availability.busType.company',
+        ])
+            ->where('bk_code', strtoupper(trim($data['bk_code'])))
+            ->whereHas('contact', function ($q) use ($data) {
+                $q->whereRaw('LOWER(ct_email) = ?', [strtolower($data['email'])]);
+            })
+            ->first();
+
+        if (! $booking) {
+            return response()->json([
+                'message' => 'Booking tidak ditemukan. Periksa kembali kode booking dan email Anda.',
+            ], 404);
+        }
+
+        $availability = $booking->availability;
+        $seatLockedUntil = $booking->passengers
+            ->pluck('seat.seat_locked_until')
+            ->filter()
+            ->min();
+
+        return response()->json([
+            'data' => [
+                'booking_id' => $booking->booking_id,
+                'bk_code' => $booking->bk_code,
+                'bk_status' => $booking->bk_status,
+                'bk_publish_price' => (float) $booking->bk_publish_price,
+                'bk_total_price' => (float) $booking->bk_total_price,
+                'biaya_layanan' => (float) $booking->bk_total_price - (float) $booking->bk_publish_price,
+                'expires_at' => $seatLockedUntil,
+                'jadwal' => $availability ? [
+                    'availability_id' => $availability->availability_id,
+                    'dari' => $availability->route?->originStation?->stn_name,
+                    'tujuan' => $availability->route?->destinationStation?->stn_name,
+                    'tanggal' => optional($availability->av_date)->toDateString(),
+                    'jam_berangkat' => substr((string) $availability->av_time, 0, 5),
+                    'kelas' => $availability->busType?->bt_name,
+                ] : null,
+                'kursi' => $booking->passengers->pluck('seat.seat_number')->filter()->values(),
+                'passengers' => $booking->passengers->map(fn ($p) => [
+                    'ps_name' => $p->ps_name,
+                    'ps_category' => $p->ps_category,
+                    'ps_age' => $p->ps_age,
+                    'ps_gender' => $p->ps_gender,
+                    'ps_nationality' => $p->ps_nationality,
+                    'seat_number' => $p->seat?->seat_number,
+                ]),
+                'contact' => [
+                    'ct_name' => $booking->contact?->ct_name,
+                    'ct_email' => $booking->contact?->ct_email,
+                    'ct_phone' => $booking->contact?->ct_phone,
+                    'ct_nationality' => $booking->contact?->ct_nationality,
+                ],
+            ],
+        ]);
     }
 }

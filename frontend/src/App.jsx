@@ -13,11 +13,14 @@ import RequireAdmin from './components/RequireAdmin'
 import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminJadwal from './pages/admin/AdminJadwal'
+import AdminTipeBus from './pages/admin/AdminTipeBus'
+import AdminProfilPerusahaan from './pages/admin/AdminProfilPerusahaan'
 import WisataDetail from './pages/WisataDetail'
 import HasilPencarian from './pages/booking/HasilPencarian'
 import DataPenumpang from './pages/booking/DataPenumpang'
 import Pembayaran from './pages/booking/Pembayaran'
 import PembayaranBerhasil from './pages/booking/PembayaranBerhasil'
+import LanjutkanPembayaran from './pages/booking/LanjutkanPembayaran'
 
 // Layout untuk halaman customer, pakai Navbar & Footer customer seperti biasa.
 function CustomerLayout() {
@@ -49,6 +52,7 @@ export default function App() {
         <Route path="/pemesanan/penumpang" element={<DataPenumpang />} />
         <Route path="/pemesanan/pembayaran" element={<Pembayaran />} />
         <Route path="/pemesanan/berhasil" element={<PembayaranBerhasil />} />
+        <Route path="/pemesanan/lanjutkan" element={<LanjutkanPembayaran />} />
       </Route>
 
       {/* Panel admin sengaja punya layout sendiri (header & footer khusus
@@ -63,6 +67,8 @@ export default function App() {
       >
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/jadwal" element={<AdminJadwal />} />
+        <Route path="/admin/tipe-bus" element={<AdminTipeBus />} />
+        <Route path="/admin/profil-perusahaan" element={<AdminProfilPerusahaan />} />
       </Route>
     </Routes>
   )

@@ -29,6 +29,11 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/pemesanan/lanjutkan" className="hover:text-navy-900">
+                {t.footer.lanjutkanPembayaran}
+              </Link>
+            </li>
+            <li>
               <Link to="/kebijakan-perjalanan" className="hover:text-navy-900">
                 {t.footer.kebijakanPerjalanan}
               </Link>

@@ -131,6 +131,17 @@ export const api = {
     })
     return handleResponse(res)
   },
+  lookupBooking: async ({ bk_code, email }) => {
+    const res = await fetch(`${API_URL}/booking/lookup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ bk_code, email }),
+    })
+    const json = await handleResponse(res)
+    return json.data
+  },
   createPaypalOrder: async ({ booking_id }) => {
     const res = await fetch(`${API_URL}/paypal/create-order`, {
       method: 'POST',
@@ -228,6 +239,77 @@ export const api = {
       headers: {
         ...authHeaders(),
       },
+    })
+    return handleResponse(res)
+  },
+  getAdminBusType: async ({ cari, page } = {}) => {
+    const params = new URLSearchParams()
+    if (cari) params.set('cari', cari)
+    if (page) params.set('page', page)
+    const res = await fetch(`${API_URL}/admin/bus-type?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminBusTypeOptions: async () => {
+    const res = await fetch(`${API_URL}/admin/bus-type-options`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahBusType: async (payload) => {
+    const res = await fetch(`${API_URL}/admin/bus-type`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahBusType: async (id, payload) => {
+    const res = await fetch(`${API_URL}/admin/bus-type/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  hapusBusType: async (id) => {
+    const res = await fetch(`${API_URL}/admin/bus-type/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getCompanyProfile: async () => {
+    const res = await fetch(`${API_URL}/company-profile`)
+    return handleResponse(res)
+  },
+  getAdminCompanyProfile: async () => {
+    const res = await fetch(`${API_URL}/admin/company-profile`, {
+      headers: { ...authHeaders() },
+    })
+    return handleResponse(res)
+  },
+  ubahCompanyProfile: async (payload) => {
+    const res = await fetch(`${API_URL}/admin/company-profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
     })
     return handleResponse(res)
   },

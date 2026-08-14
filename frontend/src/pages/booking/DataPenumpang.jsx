@@ -7,11 +7,12 @@ import SeatPickerModal from '../../components/SeatPickerModal'
 import { useBooking, kursiDibutuhkan } from '../../context/BookingContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api, getSessionId } from '../../utils/api'
+import { savePendingBooking } from '../../utils/pendingBooking'
 import backgrounddb from '../../assets/background-db.png'
 export default function DataPenumpang() {
   const navigate = useNavigate()
   const { t } = useLanguage()
-  const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId, setHarga } = useBooking()
+  const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId, setBookingCode, setHarga } = useBooking()
   const { selectedBus } = booking
   const jumlahKursi = kursiDibutuhkan(booking.search.penumpang)
   const [tahap, setTahap] = useState('form')
@@ -188,6 +189,11 @@ export default function DataPenumpang() {
       const response = await api.createBooking(payload)
       bookingDibuatRef.current = true
       setBookingId(response.data.booking_id)
+      setBookingCode(response.data.booking_code)
+      savePendingBooking({
+        code: response.data.booking_code,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      })
       setHarga({
         net: response.data.bk_net_price,
         publish: response.data.bk_publish_price,
