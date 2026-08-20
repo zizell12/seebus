@@ -34,7 +34,6 @@ class BookingController extends Controller
             'contact.ct_phone' => 'nullable|string|max:20',
             'contact.ct_nationality' => 'nullable|string|max:50',
             'availability_id' => 'required|exists:availability,availability_id',
-            'user_id' => 'nullable|exists:user,user_id',
             'booking' => 'required|array',
             'booking.bk_notes' => 'nullable|string',
             'booking.bk_adult_count' => 'required|integer|min:0',
@@ -146,7 +145,13 @@ class BookingController extends Controller
                 'ct_nationality' => $data['contact']['ct_nationality'] ?? 'Indonesia',
             ]);
 
-            $userId = $data['user_id'] ?? ($request->user()?->user_id ?? null);
+            // user_id SENGAJA tidak diambil dari body request (client bisa kirim
+            // user_id siapa saja yang valid dan booking itu akan "ditempelkan"
+            // ke akun orang lain tanpa verifikasi apapun). Satu-satunya sumber
+            // yang bisa dipercaya adalah user yang benar-benar sedang login
+            // lewat token Sanctum-nya sendiri. Kalau tidak login (guest), tetap
+            // null seperti sebelumnya.
+            $userId = $request->user()?->user_id;
 
             // Harga dihitung dari av_price milik jadwal (Availability) yang
             // tersimpan di database, BUKAN dari angka yang dikirim frontend.

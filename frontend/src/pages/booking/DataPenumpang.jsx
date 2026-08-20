@@ -167,7 +167,6 @@ export default function DataPenumpang() {
           ct_nationality: kontak.kewarganegaraan,
         },
         availability_id: selectedBus.availability_id || selectedBus.id,
-        user_id: null,
         session_id: getSessionId(),
         booking: {
           bk_notes: pesan || null,

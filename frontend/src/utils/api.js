@@ -292,6 +292,106 @@ export const api = {
     })
     return handleResponse(res)
   },
+  getAdminRoute: async ({ cari, page } = {}) => {
+    const params = new URLSearchParams()
+    if (cari) params.set('cari', cari)
+    if (page) params.set('page', page)
+    const res = await fetch(`${API_URL}/admin/route?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminRouteOptions: async () => {
+    const res = await fetch(`${API_URL}/admin/route-options`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahRoute: async (payload) => {
+    const res = await fetch(`${API_URL}/admin/route`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahRoute: async (id, payload) => {
+    const res = await fetch(`${API_URL}/admin/route/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  hapusRoute: async (id) => {
+    const res = await fetch(`${API_URL}/admin/route/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminStation: async ({ cari, page } = {}) => {
+    const params = new URLSearchParams()
+    if (cari) params.set('cari', cari)
+    if (page) params.set('page', page)
+    const res = await fetch(`${API_URL}/admin/station?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminStationOptions: async () => {
+    const res = await fetch(`${API_URL}/admin/station-options`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahStation: async (payload) => {
+    const res = await fetch(`${API_URL}/admin/station`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahStation: async (id, payload) => {
+    const res = await fetch(`${API_URL}/admin/station/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  hapusStation: async (id) => {
+    const res = await fetch(`${API_URL}/admin/station/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
   getCompanyProfile: async () => {
     const res = await fetch(`${API_URL}/company-profile`)
     return handleResponse(res)

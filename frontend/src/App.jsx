@@ -14,6 +14,8 @@ import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminJadwal from './pages/admin/AdminJadwal'
 import AdminTipeBus from './pages/admin/AdminTipeBus'
+import AdminRute from './pages/admin/AdminRute'
+import AdminStasiun from './pages/admin/AdminStasiun'
 import AdminProfilPerusahaan from './pages/admin/AdminProfilPerusahaan'
 import WisataDetail from './pages/WisataDetail'
 import HasilPencarian from './pages/booking/HasilPencarian'
@@ -68,6 +70,8 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/jadwal" element={<AdminJadwal />} />
         <Route path="/admin/tipe-bus" element={<AdminTipeBus />} />
+        <Route path="/admin/rute" element={<AdminRute />} />
+        <Route path="/admin/terminal" element={<AdminStasiun />} />
         <Route path="/admin/profil-perusahaan" element={<AdminProfilPerusahaan />} />
       </Route>
     </Routes>
