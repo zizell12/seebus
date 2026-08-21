@@ -87,7 +87,6 @@ function FasilitasPicker({ t, fasilitasUmum, value, onChange }) {
 }
 
 function TipeBusForm({ t, options, initial, onCancel, onSubmit, submitting }) {
-  const [companyId, setCompanyId] = useState(initial?.company_id || '')
   const [namaTipe, setNamaTipe] = useState(initial?.bt_name || '')
   const [kapasitas, setKapasitas] = useState(initial?.bt_capacity ?? '')
   const [fasilitas, setFasilitas] = useState(initial?.bt_facilities || [])
@@ -96,7 +95,6 @@ function TipeBusForm({ t, options, initial, onCancel, onSubmit, submitting }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit({
-      company_id: companyId,
       bt_name: namaTipe,
       bt_capacity: Number(kapasitas),
       bt_facilities: fasilitas,
@@ -118,19 +116,10 @@ function TipeBusForm({ t, options, initial, onCancel, onSubmit, submitting }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminTipeBusPage.labelPerusahaan}</label>
-            <select
-              required
-              value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-            >
-              <option value="">{t.adminTipeBusPage.pilihPerusahaan}</option>
-              {options.companies.map((c) => (
-                <option key={c.company_id} value={c.company_id}>
-                  {c.co_name}
-                </option>
-              ))}
-            </select>
+            <div className="w-full border border-gray-100 bg-gray-50 rounded-lg px-3 py-2.5 text-sm text-gray-600 flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+              {options.company_name || '-'}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -158,7 +147,7 @@ function TipeBusForm({ t, options, initial, onCancel, onSubmit, submitting }) {
             </div>
           </div>
 
-          <FasilitasPicker t={t} fasilitasUmum={options.fasilitas_umum} value={fasilitas} onChange={setFasilitas} />
+          <FasilitasPicker t={t} fasilitasUmum={options.fasilitas_umum || []} value={fasilitas} onChange={setFasilitas} />
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
@@ -185,7 +174,7 @@ function TipeBusForm({ t, options, initial, onCancel, onSubmit, submitting }) {
 export default function AdminTipeBus() {
   const { t } = useLanguage()
   const [data, setData] = useState(null)
-  const [options, setOptions] = useState({ companies: [], fasilitas_umum: [] })
+  const [options, setOptions] = useState({ company_name: '', fasilitas_umum: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [cari, setCari] = useState('')

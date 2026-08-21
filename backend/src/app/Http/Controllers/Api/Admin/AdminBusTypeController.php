@@ -20,6 +20,20 @@ class AdminBusTypeController extends Controller
     ];
 
     /**
+     * Proyek ini cuma untuk 1 perusahaan, jadi company_id tidak lagi
+     * diminta dari form -- selalu diambil dari satu-satunya baris yang ada
+     * di tabel company (yang sama dipakai untuk "Profil Perusahaan").
+     */
+    private function satuSatunyaCompanyId(): int
+    {
+        $company = Company::first();
+
+        abort_if(! $company, 422, 'Data perusahaan belum ada. Isi dulu "Profil Perusahaan" sebelum menambah tipe bus.');
+
+        return $company->company_id;
+    }
+
+    /**
      * GET /api/admin/bus-type
      * List semua tipe bus untuk ditampilkan di tabel panel admin.
      */
@@ -53,17 +67,14 @@ class AdminBusTypeController extends Controller
 
     /**
      * GET /api/admin/bus-type-options
-     * Daftar perusahaan (untuk dropdown) dan daftar fasilitas umum (untuk
-     * pilihan cepat) yang dipakai di form tambah/edit tipe bus.
+     * Nama perusahaan (buat ditampilkan sebagai info read-only di form,
+     * bukan dropdown -- proyek ini cuma 1 perusahaan jadi tidak perlu
+     * dipilih) dan daftar fasilitas umum untuk pilihan cepat.
      */
     public function options(): JsonResponse
     {
-        $companies = Company::orderBy('co_name')
-            ->get(['company_id', 'co_name'])
-            ->map(fn ($c) => ['company_id' => $c->company_id, 'co_name' => $c->co_name]);
-
         return response()->json([
-            'companies' => $companies,
+            'company_name' => Company::first()?->co_name,
             'fasilitas_umum' => self::FASILITAS_UMUM,
         ]);
     }
@@ -75,7 +86,6 @@ class AdminBusTypeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'company_id' => 'required|exists:company,company_id',
             'bt_name' => 'required|string|max:100',
             'bt_capacity' => 'required|integer|min:1|max:100',
             'bt_facilities' => 'array',
@@ -83,7 +93,7 @@ class AdminBusTypeController extends Controller
         ]);
 
         $busType = BusType::create([
-            'company_id' => $data['company_id'],
+            'company_id' => $this->satuSatunyaCompanyId(),
             'bt_name' => $data['bt_name'],
             'bt_capacity' => $data['bt_capacity'],
             'bt_facilities' => implode(', ', $data['bt_facilities'] ?? []),
@@ -104,7 +114,6 @@ class AdminBusTypeController extends Controller
         $busType = BusType::findOrFail($id);
 
         $data = $request->validate([
-            'company_id' => 'required|exists:company,company_id',
             'bt_name' => 'required|string|max:100',
             'bt_capacity' => 'required|integer|min:1|max:100',
             'bt_facilities' => 'array',
@@ -112,7 +121,6 @@ class AdminBusTypeController extends Controller
         ]);
 
         $busType->update([
-            'company_id' => $data['company_id'],
             'bt_name' => $data['bt_name'],
             'bt_capacity' => $data['bt_capacity'],
             'bt_facilities' => implode(', ', $data['bt_facilities'] ?? []),
