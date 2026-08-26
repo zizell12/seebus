@@ -54,42 +54,27 @@ export const kotaWisataPopuler = [
     slug: 'banyuwangi',
     gambar: BanyuwangiSatu,
     gambarKedua: BanyuwangiDua,
-    deskripsi: {
-      id: 'Banyuwangi adalah kabupaten di ujung timur Pulau Jawa yang dikenal sebagai "The Sunrise of Java", menjadi gerbang penyeberangan menuju Bali serta tersohor dengan destinasi wisatanya seperti Kawah Ijen, Hutan De Djawatan, dan Green Island yang dijuluki "Raja Ampatnya Banyuwangi", serta masih banyak lagi wisata menawan lainnya yang siap menanti untuk dijelajahi.',
-      en: 'Banyuwangi is a regency at the easternmost tip of Java, known as "The Sunrise of Java" and the gateway to Bali. It is famous for attractions such as Kawah Ijen, De Djawatan Forest, and Green Island — nicknamed "Banyuwangi\'s Raja Ampat" — along with many more stunning spots waiting to be explored.',
-    },
+    deskripsi: 'Banyuwangi adalah kabupaten di ujung timur Pulau Jawa yang dikenal sebagai "The Sunrise of Java", menjadi gerbang penyeberangan menuju Bali serta tersohor dengan destinasi wisatanya seperti Kawah Ijen, Hutan De Djawatan, dan Green Island yang dijuluki "Raja Ampatnya Banyuwangi", serta masih banyak lagi wisata menawan lainnya yang siap menanti untuk dijelajahi.',
     tempatWisata: [
       {
         nama: 'Kawah Ijen',
         gambar: Ijen,
-        desk: {
-          id: 'Kawah gunung berapi terkenal dengan fenomena api biru (blue fire) langka dan pemandangan danau kawah bernuansa hijau tosca.',
-          en: 'A volcanic crater famous for its rare blue fire phenomenon and a turquoise-green crater lake.',
-        },
+        desk: 'Kawah gunung berapi terkenal dengan fenomena api biru (blue fire) langka dan pemandangan danau kawah bernuansa hijau tosca.',
       },
       {
         nama: 'Hutan De Djawatan',
         gambar: DeDjawatan,
-        desk: {
-          id: 'Hutan pohon trembesi berusia ratusan tahun dengan akar-akar besar yang memberi nuansa magis mirip latar film fantasi.',
-          en: 'A forest of centuries-old trembesi trees with sprawling roots that give it a magical, fantasy-film atmosphere.',
-        },
+        desk: 'Hutan pohon trembesi berusia ratusan tahun dengan akar-akar besar yang memberi nuansa magis mirip latar film fantasi.',
       },
       {
         nama: 'Green Island',
         gambar: GreenIsland,
-        desk: {
-          id: 'Pulau kecil eksotis dengan air laut jernih dan pasir putih, dijuluki "Raja Ampatnya Banyuwangi".',
-          en: 'A small, exotic island with clear water and white sand, nicknamed "Banyuwangi\'s Raja Ampat".',
-        },
+        desk: 'Pulau kecil eksotis dengan air laut jernih dan pasir putih, dijuluki "Raja Ampatnya Banyuwangi".',
       },
       {
         nama: 'Pulau Merah',
         gambar: PulauMerah,
-        desk: {
-          id: 'Hamparan pasir dan bukit kecil berwarna kemerahan yang jadi ikon destinasi Banyuwangi, cocok untuk berselancar.',
-          en: 'A stretch of sand with a reddish hill that has become an iconic Banyuwangi landmark, popular for surfing.',
-        },
+        desk: 'Hamparan pasir dan bukit kecil berwarna kemerahan yang jadi ikon destinasi Banyuwangi, cocok untuk berselancar.',
       },
     ],
   },
@@ -98,42 +83,27 @@ export const kotaWisataPopuler = [
     slug: 'bali',
     gambar: BaliSatu,
     gambarKedua: BaliDua,
-    deskripsi: {
-      id: 'Bali, atau Pulau Dewata, adalah destinasi wisata paling ikonik di Indonesia yang memadukan pantai eksotis, budaya Hindu yang kental, sawah berundak yang memukau, hingga kehidupan malam yang meriah. Cocok untuk semua jenis wisatawan, dari yang mencari ketenangan spiritual di Ubud hingga yang mencari keseruan di Kuta dan Seminyak.',
-      en: 'Bali, the Island of the Gods, is Indonesia\'s most iconic tourist destination, blending exotic beaches, rich Hindu culture, stunning rice terraces, and a lively nightlife. It suits every kind of traveler, from those seeking spiritual calm in Ubud to those chasing excitement in Kuta and Seminyak.',
-    },
+    deskripsi: 'Bali, atau Pulau Dewata, adalah destinasi wisata paling ikonik di Indonesia yang memadukan pantai eksotis, budaya Hindu yang kental, sawah berundak yang memukau, hingga kehidupan malam yang meriah. Cocok untuk semua jenis wisatawan, dari yang mencari ketenangan spiritual di Ubud hingga yang mencari keseruan di Kuta dan Seminyak.',
     tempatWisata: [
       {
         nama: 'Pantai Kuta',
         gambar: PantaiKuta,
-        desk: {
-          id: 'Pantai paling populer di Bali dengan ombak yang cocok untuk berselancar dan sunset yang memukau.',
-          en: 'Bali\'s most popular beach, with waves suited for surfing and breathtaking sunsets.',
-        },
+        desk: 'Pantai paling populer di Bali dengan ombak yang cocok untuk berselancar dan sunset yang memukau.',
       },
       {
         nama: 'Tanah Lot',
         gambar: TanahLot,
-        desk: {
-          id: 'Pura di atas batu karang di tengah laut, salah satu ikon fotografi paling terkenal dari Bali.',
-          en: 'A temple perched on a rock formation in the sea, one of Bali\'s most famous photo spots.',
-        },
+        desk: 'Pura di atas batu karang di tengah laut, salah satu ikon fotografi paling terkenal dari Bali.',
       },
       {
         nama: 'Tegalalang Rice Terrace',
         gambar: Tegalalang,
-        desk: {
-          id: 'Sawah berundak hijau di Ubud dengan pemandangan lembah yang asri, favorit para pencinta alam.',
-          en: 'Lush green rice terraces in Ubud with picturesque valley views, a favorite among nature lovers.',
-        },
+        desk: 'Sawah berundak hijau di Ubud dengan pemandangan lembah yang asri, favorit para pencinta alam.',
       },
       {
         nama: 'Uluwatu',
         gambar: Uluwatu,
-        desk: {
-          id: 'Pura di tebing curam dengan panorama laut lepas dan pertunjukan Tari Kecak saat senja.',
-          en: 'A temple on a steep cliff with sweeping ocean views and Kecak dance performances at sunset.',
-        },
+        desk: 'Pura di tebing curam dengan panorama laut lepas dan pertunjukan Tari Kecak saat senja.',
       },
     ],
   },
@@ -142,42 +112,27 @@ export const kotaWisataPopuler = [
     slug: 'malang',
     gambar: MalangSatu,
     gambarKedua: MalangDua,
-    deskripsi: {
-      id: 'Malang adalah kota sejuk di Jawa Timur yang terkenal dengan udaranya yang segar, wisata alam pegunungan, taman hiburan keluarga, hingga kuliner khasnya seperti bakso Malang dan apel. Lokasinya yang dekat dengan Gunung Bromo membuat Malang jadi titik singgah favorit sebelum menjelajah kawasan Tengger.',
-      en: 'Malang is a cool East Java city known for its fresh mountain air, natural scenery, family theme parks, and local specialties like Malang meatballs and apples. Its proximity to Mount Bromo makes it a favorite stopover before exploring the Tengger area.',
-    },
+    deskripsi: 'Malang adalah kota sejuk di Jawa Timur yang terkenal dengan udaranya yang segar, wisata alam pegunungan, taman hiburan keluarga, hingga kuliner khasnya seperti bakso Malang dan apel. Lokasinya yang dekat dengan Gunung Bromo membuat Malang jadi titik singgah favorit sebelum menjelajah kawasan Tengger.',
     tempatWisata: [
       {
         nama: 'Jatim Park 2',
         gambar: JatimPark2,
-        desk: {
-          id: 'Kawasan wisata edukasi dengan kebun binatang dan museum satwa, favorit wisata keluarga.',
-          en: 'An educational tourist area with a zoo and wildlife museum, a favorite for family trips.',
-        },
+        desk: 'Kawasan wisata edukasi dengan kebun binatang dan museum satwa, favorit wisata keluarga.',
       },
       {
         nama: 'Coban Rondo',
         gambar: CobanRondo,
-        desk: {
-          id: 'Air terjun setinggi 84 meter di kaki Gunung Panderman dengan udara sejuk dan suasana hutan pinus.',
-          en: 'An 84-meter waterfall at the foot of Mount Panderman, set in a cool pine forest atmosphere.',
-        },
+        desk: 'Air terjun setinggi 84 meter di kaki Gunung Panderman dengan udara sejuk dan suasana hutan pinus.',
       },
       {
         nama: 'Kampung Warna-Warni Jodipan',
         gambar: KampungJodipan,
-        desk: {
-          id: 'Perkampungan padat penduduk yang disulap penuh warna, kini jadi spot foto ikonik Kota Malang.',
-          en: 'A densely populated neighborhood transformed into a colorful village, now an iconic photo spot in Malang.',
-        },
+        desk: 'Perkampungan padat penduduk yang disulap penuh warna, kini jadi spot foto ikonik Kota Malang.',
       },
       {
         nama: 'Gunung Bromo',
         gambar: GunungBromo,
-        desk: {
-          id: 'Gunung berapi aktif dengan lautan pasir dan pemandangan matahari terbit terbaik di Jawa Timur, dapat ditempuh dari Malang.',
-          en: 'An active volcano with a sea of sand and some of the best sunrise views in East Java, reachable from Malang.',
-        },
+        desk: 'Gunung berapi aktif dengan lautan pasir dan pemandangan matahari terbit terbaik di Jawa Timur, dapat ditempuh dari Malang.',
       },
     ],
   },
@@ -186,42 +141,27 @@ export const kotaWisataPopuler = [
     slug: 'yogyakarta',
     gambar: YogyaSatu,
     gambarKedua: YogyaDua,
-    deskripsi: {
-      id: 'Yogyakarta adalah kota budaya dan pendidikan di Jawa Tengah yang kaya akan warisan sejarah Kesultanan Mataram, mulai dari candi kelas dunia, keraton yang masih aktif, hingga jalan Malioboro yang legendaris. Kota ini juga jadi surga kuliner dan pusat kesenian tradisional Jawa.',
-      en: 'Yogyakarta is a city of culture and education rich in the historical legacy of the Mataram Sultanate — from world-class temples to a still-active royal palace and the legendary Malioboro street. The city is also a culinary haven and a center of traditional Javanese art.',
-    },
+    deskripsi: 'Yogyakarta adalah kota budaya dan pendidikan di Jawa Tengah yang kaya akan warisan sejarah Kesultanan Mataram, mulai dari candi kelas dunia, keraton yang masih aktif, hingga jalan Malioboro yang legendaris. Kota ini juga jadi surga kuliner dan pusat kesenian tradisional Jawa.',
     tempatWisata: [
       {
         nama: 'Malioboro',
         gambar: Malioboro,
-        desk: {
-          id: 'Jalan legendaris pusat perbelanjaan dan kuliner khas Yogyakarta, ramai wisatawan siang dan malam.',
-          en: 'A legendary street for shopping and local cuisine, bustling with visitors day and night.',
-        },
+        desk: 'Jalan legendaris pusat perbelanjaan dan kuliner khas Yogyakarta, ramai wisatawan siang dan malam.',
       },
       {
         nama: 'Candi Borobudur',
         gambar: CandiBorobudur,
-        desk: {
-          id: 'Candi Buddha terbesar di dunia dan situs warisan UNESCO, ikon wisata sejarah paling terkenal di Indonesia.',
-          en: 'The world\'s largest Buddhist temple and a UNESCO World Heritage Site, Indonesia\'s most famous historical landmark.',
-        },
+        desk: 'Candi Buddha terbesar di dunia dan situs warisan UNESCO, ikon wisata sejarah paling terkenal di Indonesia.',
       },
       {
         nama: 'Candi Prambanan',
         gambar: CandiPrambanan,
-        desk: {
-          id: 'Kompleks candi Hindu megah dengan menara-menara tinggi, terkenal dengan pertunjukan Sendratari Ramayana.',
-          en: 'A magnificent Hindu temple complex with towering spires, famous for its Ramayana ballet performances.',
-        },
+        desk: 'Kompleks candi Hindu megah dengan menara-menara tinggi, terkenal dengan pertunjukan Sendratari Ramayana.',
       },
       {
         nama: 'Taman Sari',
         gambar: TamanSari,
-        desk: {
-          id: 'Bekas taman air Keraton Yogyakarta dengan arsitektur unik perpaduan Jawa dan Portugis.',
-          en: 'The former water garden of the Yogyakarta palace, featuring a unique blend of Javanese and Portuguese architecture.',
-        },
+        desk: 'Bekas taman air Keraton Yogyakarta dengan arsitektur unik perpaduan Jawa dan Portugis.',
       },
     ],
   },
@@ -230,42 +170,27 @@ export const kotaWisataPopuler = [
     slug: 'bandung',
     gambar: BandungSatu,
     gambarKedua: BandungDua,
-    deskripsi: {
-      id: 'Bandung, ibu kota Jawa Barat, dikenal sebagai "Paris van Java" berkat udaranya yang sejuk, arsitektur kolonial yang khas, wisata alam pegunungan, serta menjadi surga belanja fashion dan kuliner bagi wisatawan dari berbagai daerah.',
-      en: 'Bandung, the capital of West Java, is known as the "Paris van Java" for its cool climate, distinctive colonial architecture, and mountain scenery, and is a haven for fashion shopping and culinary exploration for visitors from all over.',
-    },
+    deskripsi: 'Bandung, ibu kota Jawa Barat, dikenal sebagai "Paris van Java" berkat udaranya yang sejuk, arsitektur kolonial yang khas, wisata alam pegunungan, serta menjadi surga belanja fashion dan kuliner bagi wisatawan dari berbagai daerah.',
     tempatWisata: [
       {
         nama: 'Kawah Putih',
         gambar: KawahPutih,
-        desk: {
-          id: 'Danau kawah vulkanik berwarna putih kehijauan yang eksotis, terletak di kaki Gunung Patuha.',
-          en: 'An exotic whitish-green volcanic crater lake at the foot of Mount Patuha.',
-        },
+        desk: 'Danau kawah vulkanik berwarna putih kehijauan yang eksotis, terletak di kaki Gunung Patuha.',
       },
       {
         nama: 'Tebing Keraton',
         gambar: TebingKeraton,
-        desk: {
-          id: 'Tebing dengan pemandangan hutan pinus dan lembah dari ketinggian, favorit untuk berburu sunrise.',
-          en: 'A cliff with elevated views of pine forests and valleys, a favorite spot for chasing sunrises.',
-        },
+        desk: 'Tebing dengan pemandangan hutan pinus dan lembah dari ketinggian, favorit untuk berburu sunrise.',
       },
       {
         nama: 'Gedung Sate',
         gambar: GedungSate,
-        desk: {
-          id: 'Ikon bangunan bersejarah Kota Bandung dengan arsitektur unik menyerupai tusuk sate di puncaknya.',
-          en: 'Bandung\'s iconic historic building, with unique architecture resembling a satay skewer at its peak.',
-        },
+        desk: 'Ikon bangunan bersejarah Kota Bandung dengan arsitektur unik menyerupai tusuk sate di puncaknya.',
       },
       {
         nama: 'Farmhouse Lembang',
         gambar: FarmhouseLembang,
-        desk: {
-          id: 'Wisata bertema Eropa dengan spot foto ala pedesaan Belanda, favorit keluarga dan anak muda.',
-          en: 'A European-themed attraction with Dutch countryside-style photo spots, popular with families and young visitors.',
-        },
+        desk: 'Wisata bertema Eropa dengan spot foto ala pedesaan Belanda, favorit keluarga dan anak muda.',
       },
     ],
   },

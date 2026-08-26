@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Search, MapPin, ChevronRight, ChevronDown } from 'lucide-react'
 import SearchForm from '../components/SearchForm'
+import AutoText from '../components/AutoText'
 import { useLanguage } from '../context/LanguageContext'
 import { getTipeTerminalLabel } from '../utils/busHelpers'
 import { provinsiPopuler, dataWilayah, totalTerminalAktif } from '../data/wilayahData'
@@ -112,7 +113,8 @@ export default function Wilayah() {
                         <p className="text-xs text-gray-400">{term.kecamatan}</p>
                         <p className="font-semibold text-navy-900">{term.nama}</p>
                         <p className="text-xs text-gray-500">
-                          {getTipeTerminalLabel(term.tipe, t)} · {term.keterangan}
+                          {getTipeTerminalLabel(term.tipe, t)} ·{' '}
+                          <AutoText text={term.keterangan} as="span" />
                         </p>
                       </div>
                     ))}

@@ -1,163 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Power, RefreshCcw, ChevronLeft, ChevronRight, X, ArrowRight } from 'lucide-react'
 import { api } from '../../utils/api'
 import { useLanguage } from '../../context/LanguageContext'
 
-function JadwalForm({ t, options, initial, onCancel, onSubmit, submitting }) {
-  const [routeId, setRouteId] = useState(initial?.route_id || '')
-  const [busTypeId, setBusTypeId] = useState(initial?.bus_type_id || '')
-  const [tanggal, setTanggal] = useState(initial?.av_date || '')
-  const [jam, setJam] = useState(initial?.av_time || '')
-  const [hargaDewasa, setHargaDewasa] = useState(initial?.av_price?.adult ?? '')
-  const [hargaAnak, setHargaAnak] = useState(initial?.av_price?.child ?? '')
-  const isEdit = Boolean(initial)
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onSubmit({
-      route_id: routeId,
-      bus_type_id: busTypeId,
-      av_date: tanggal,
-      av_time: jam,
-      av_price: { adult: Number(hargaDewasa), child: Number(hargaAnak) },
-    })
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-bold text-navy-900 text-lg">
-            {isEdit ? t.adminJadwalPage.formEditJudul : t.adminJadwalPage.formTambahJudul}
-          </h2>
-          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isEdit && (
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelRute}</label>
-              <select
-                required
-                value={routeId}
-                onChange={(e) => setRouteId(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              >
-                <option value="">{t.adminJadwalPage.pilihRute}</option>
-                {options.routes.map((r) => (
-                  <option key={r.route_id} value={r.route_id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {!isEdit && (
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelTipeBus}</label>
-              <select
-                required
-                value={busTypeId}
-                onChange={(e) => setBusTypeId(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              >
-                <option value="">{t.adminJadwalPage.pilihTipeBus}</option>
-                {options.bus_types.map((bt) => (
-                  <option key={bt.bus_type_id} value={bt.bus_type_id}>
-                    {bt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            {!isEdit && (
-              <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelTanggal}</label>
-                <input
-                  required
-                  type="date"
-                  value={tanggal}
-                  onChange={(e) => setTanggal(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-                />
-              </div>
-            )}
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelJam}</label>
-              <input
-                required
-                type="time"
-                value={jam}
-                onChange={(e) => setJam(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelHargaDewasa}</label>
-              <input
-                required
-                type="number"
-                min="0"
-                value={hargaDewasa}
-                onChange={(e) => setHargaDewasa(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelHargaAnak}</label>
-              <input
-                required
-                type="number"
-                min="0"
-                value={hargaAnak}
-                onChange={(e) => setHargaAnak(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-sm font-semibold text-gray-500 px-4 py-2.5 rounded-lg hover:bg-gray-50"
-            >
-              {t.adminJadwalPage.batal}
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="text-sm font-semibold text-white bg-brand-red px-4 py-2.5 rounded-lg hover:bg-brand-red/90 disabled:opacity-50"
-            >
-              {submitting ? t.adminJadwalPage.menyimpan : t.adminJadwalPage.simpan}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
 export default function AdminJadwal() {
   const { t } = useLanguage()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
-  const [options, setOptions] = useState({ routes: [], bus_types: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [tanggal, setTanggal] = useState('')
   const [page, setPage] = useState(1)
   const [actionLoading, setActionLoading] = useState(null)
-  const [modal, setModal] = useState(null) // null | 'tambah' | availability object (edit)
-  const [submitting, setSubmitting] = useState(false)
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState(location.state?.notice || '')
 
   const muatJadwal = useCallback(async () => {
     setLoading(true)
@@ -177,7 +34,10 @@ export default function AdminJadwal() {
   }, [muatJadwal])
 
   useEffect(() => {
-    api.getAdminJadwalOptions().then(setOptions).catch(() => {})
+    if (location.state?.notice) {
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleToggleStatus = async (item) => {
@@ -196,38 +56,6 @@ export default function AdminJadwal() {
     }
   }
 
-  const handleTambah = async (payload) => {
-    setSubmitting(true)
-    try {
-      await api.tambahJadwal(payload)
-      setModal(null)
-      setNotice(t.adminJadwalPage.berhasilTambah)
-      setPage(1)
-      await muatJadwal()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleEdit = async (payload) => {
-    setSubmitting(true)
-    try {
-      await api.ubahJadwal(modal.availability_id, {
-        av_time: payload.av_time,
-        av_price: payload.av_price,
-      })
-      setModal(null)
-      setNotice(t.adminJadwalPage.berhasilUbah)
-      await muatJadwal()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   const daftar = data?.data || []
   const halamanSekarang = data?.current_page || 1
   const totalHalaman = data?.last_page || 1
@@ -239,12 +67,12 @@ export default function AdminJadwal() {
           <h1 className="text-xl md:text-2xl font-bold text-navy-900">{t.adminJadwalPage.judul}</h1>
           <p className="text-sm text-gray-500 mt-1">{t.adminJadwalPage.subJudul}</p>
         </div>
-        <button
-          onClick={() => setModal('tambah')}
+        <Link
+          to="/admin/jadwal/tambah"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-red px-4 py-2.5 rounded-lg hover:bg-brand-red/90 transition-colors"
         >
           <Plus className="w-4 h-4" /> {t.adminJadwalPage.tambahJadwal}
-        </button>
+        </Link>
       </div>
 
       {notice && (
@@ -346,12 +174,13 @@ export default function AdminJadwal() {
                     </td>
                     <td className="py-3 pr-0">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setModal(item)}
+                        <Link
+                          to={`/admin/jadwal/edit/${item.availability_id}`}
+                          state={{ item }}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50"
                         >
                           <Pencil className="w-3.5 h-3.5" /> {t.adminJadwalPage.edit}
-                        </button>
+                        </Link>
                         <button
                           onClick={() => handleToggleStatus(item)}
                           disabled={actionLoading === item.availability_id}
@@ -390,28 +219,6 @@ export default function AdminJadwal() {
             </div>
           )}
         </>
-      )}
-
-      {modal === 'tambah' && (
-        <JadwalForm
-          t={t}
-          options={options}
-          initial={null}
-          onCancel={() => setModal(null)}
-          onSubmit={handleTambah}
-          submitting={submitting}
-        />
-      )}
-
-      {modal && modal !== 'tambah' && (
-        <JadwalForm
-          t={t}
-          options={options}
-          initial={modal}
-          onCancel={() => setModal(null)}
-          onSubmit={handleEdit}
-          submitting={submitting}
-        />
       )}
     </div>
   )

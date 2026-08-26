@@ -108,6 +108,7 @@ class AvailabilityGenerator
         $columns = self::SEAT_COLUMNS_BY_CATEGORY[$kategori] ?? ['A', 'B', 'C', 'D'];
         $rows = (int) ceil($capacity / count($columns));
         $seatCount = 0;
+        $seatRows = [];
 
         for ($row = 1; $row <= $rows; $row++) {
             foreach ($columns as $col) {
@@ -115,14 +116,22 @@ class AvailabilityGenerator
                     break 2;
                 }
 
-                Seat::create([
+                $seatRows[] = [
                     'availability_id' => $availability->availability_id,
                     'seat_number' => "{$col}{$row}",
                     'seat_status' => 'empty',
-                ]);
+                ];
 
                 $seatCount++;
             }
+        }
+
+        // Insert semua kursi sekaligus dalam 1 query (bulk insert) alih-alih
+        // satu query per kursi. Untuk seeding awal ini bedanya ribuan query
+        // individual jadi cuma satu query per availability -- jauh lebih
+        // cepat, terutama waktu jalanin `php artisan migrate --seed`.
+        if ($seatRows) {
+            Seat::insert($seatRows);
         }
     }
 }

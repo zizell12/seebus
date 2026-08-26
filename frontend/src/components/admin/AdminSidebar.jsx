@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { Inbox, CalendarClock, BusFront, Building2, X, Route as RouteIcon, MapPin } from 'lucide-react'
+import { Inbox, CalendarClock, BusFront, X, Route as RouteIcon, MapPin } from 'lucide-react'
 import { useLanguage } from '../../context/LanguageContext'
 
 const MENU_GROUPS = [
@@ -12,7 +12,6 @@ const MENU_GROUPS = [
       { to: '/admin/tipe-bus', end: false, icon: BusFront, labelKey: 'menuTipeBus' },
       { to: '/admin/rute', end: false, icon: RouteIcon, labelKey: 'menuRute' },
       { to: '/admin/terminal', end: false, icon: MapPin, labelKey: 'menuTerminal' },
-      { to: '/admin/profil-perusahaan', end: false, icon: Building2, labelKey: 'menuProfil' },
     ],
   },
 ]

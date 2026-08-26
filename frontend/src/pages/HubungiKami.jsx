@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Phone, Mail, MessageCircle, HelpCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -24,8 +24,6 @@ function ContactChannel({ icon: Icon, label, value }) {
 export default function HubungiKami() {
   const { t } = useLanguage()
 
-  const [profile, setProfile] = useState(null)
-
   const [form, setForm] = useState({
     nama: '',
     email: '',
@@ -37,33 +35,15 @@ export default function HubungiKami() {
   const [error, setError] = useState('')
   const [sukses, setSukses] = useState(false)
 
-  useEffect(() => {
-    api
-      .getCompanyProfile()
-      .then(setProfile)
-      .catch(() => {})
-  }, [])
-
-  const alamat =
-    profile?.co_address ||
-    t.hubungiKamiPage.kantorPusatAlamat
-
-  const teleponCs =
-    profile?.co_cs_phone ||
-    '+62 21 555 1234'
-
-  const email =
-    profile?.co_email ||
-    'support@seebus.co.id'
-
-  const whatsapp =
-    profile?.co_whatsapp ||
-    '+62 812 3456 7890'
-
-  const mapLink =
-    profile?.co_map_lat && profile?.co_map_lng
-      ? `https://www.google.com/maps?q=${profile.co_map_lat},${profile.co_map_lng}`
-      : 'https://www.google.com/maps?q=-6.2241,106.8022'
+  // Info kontak di halaman ini SENGAJA ditulis langsung di kode (bukan
+  // diambil dari database lewat panel admin) -- kontennya jarang berubah,
+  // jadi lebih simpel diedit langsung di sini kalau suatu saat perlu
+  // diganti, daripada lewat form admin yang jarang dipakai.
+  const alamat = t.hubungiKamiPage.kantorPusatAlamat
+  const teleponCs = '+62 21 555 1234'
+  const email = 'support@seebus.co.id'
+  const whatsapp = '+62 812 3456 7890'
+  const mapLink = 'https://www.google.com/maps?q=-6.2241,106.8022'
 
   const handleChange = (e) => {
     setForm({

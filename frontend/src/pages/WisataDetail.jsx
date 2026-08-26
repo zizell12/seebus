@@ -1,6 +1,7 @@
 import React from 'react'
 import { useParams, Link } from 'react-router-dom'
 import SearchForm from '../components/SearchForm'
+import AutoText from '../components/AutoText'
 import { kotaWisataPopuler } from '../data/dummyData'
 import { useLanguage } from '../context/LanguageContext'
 import backgrounddb from '../assets/background-db.png'
@@ -10,13 +11,13 @@ function TempatWisataCard({ nama, gambar, desk }) {
       <img src={gambar} alt={nama} className="w-24 h-24 rounded-xl object-cover shrink-0" />
       <div>
         <h3 className="font-bold text-navy-900 mb-1">{nama}</h3>
-        <p className="text-sm text-gray-500">{desk}</p>
+        <AutoText text={desk} className="text-sm text-gray-500" />
       </div>
     </div>
   )
 }
 export default function WisataDetail() {
-  const { t, lang } = useLanguage()
+  const { t } = useLanguage()
   const { slug } = useParams()
   const kota = kotaWisataPopuler.find((k) => k.slug === slug)
   if (!kota) {
@@ -58,7 +59,7 @@ export default function WisataDetail() {
 
         <div className="mb-10">
           <h2 className="text-lg font-bold text-navy-900 mb-3">{t.wisataDetailPage.deskripsiJudul}</h2>
-          <p className="text-sm text-gray-500 leading-relaxed">{kota.deskripsi[lang]}</p>
+          <AutoText text={kota.deskripsi} className="text-sm text-gray-500 leading-relaxed" />
         </div>
 
         <div>
@@ -67,7 +68,7 @@ export default function WisataDetail() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {kota.tempatWisata?.map((tw) => (
-              <TempatWisataCard key={tw.nama} nama={tw.nama} gambar={tw.gambar} desk={tw.desk[lang]} />
+              <TempatWisataCard key={tw.nama} nama={tw.nama} gambar={tw.gambar} desk={tw.desk} />
             ))}
           </div>
         </div>

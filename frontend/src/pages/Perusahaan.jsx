@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import {
   Search,
   MapPin,
@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../context/LanguageContext'
-import { api } from '../utils/api'
 
 import backgroundPerusahaan from '../assets/background-db.png'
 import ceoImage from '../assets/ceo.jpg'
@@ -129,35 +128,28 @@ function CommitmentBanner({ t, c }) {
 }
 
 export default function Perusahaan() {
-  const { t, lang } = useLanguage()
-  const [profile, setProfile] = useState(null)
+  const { t } = useLanguage()
 
-  useEffect(() => {
-    api.getCompanyProfile().then(setProfile).catch(() => {})
-  }, [])
-
-  // "c" = konten yang dipakai halaman ini: pakai data dari admin kalau sudah
-  // ada isinya, kalau belum diisi (atau masih memuat) jatuh balik ke teks
-  // bawaan supaya halaman tidak pernah tampil kosong.
+  // Info perusahaan di halaman ini SENGAJA ditulis langsung di kode (bukan
+  // diambil dari database lewat panel admin) -- kontennya jarang berubah,
+  // jadi lebih simpel diedit langsung di sini kalau suatu saat perlu
+  // diganti, daripada lewat form admin yang jarang dipakai.
   const c = {
-    badge: profile?.co_badge_sejak || t.perusahaan.badgeSejak,
-    heroJudul: profile?.[`co_hero_judul_${lang}`] || t.perusahaan.heroJudul,
-    heroDeskripsi: profile?.[`co_hero_deskripsi_${lang}`] || t.perusahaan.heroDeskripsi,
-    misi: profile?.[`co_misi_kutipan_${lang}`] || t.perusahaan.misiKutipan,
-    amanJudul: profile?.[`co_aman_judul_${lang}`] || t.perusahaan.perjalananAmanJudul,
-    amanDeskripsi: profile?.[`co_aman_deskripsi_${lang}`] || t.perusahaan.perjalananAmanDeskripsi,
-    statArmada: profile?.co_stat_armada || '500+',
-    statRute: profile?.co_stat_rute || '120',
-    statPenumpang: profile?.co_stat_penumpang || '2 Juta+',
-    komitmenJudul: profile?.[`co_komitmen_judul_${lang}`] || t.perusahaan.komitmenJudul,
-    komitmenDeskripsi: profile?.[`co_komitmen_deskripsi_${lang}`] || t.perusahaan.komitmenDeskripsi,
-    alamat: profile?.co_address || t.perusahaan.alamatKantor,
-    telepon: profile?.co_phone || '+62 21 555 0192',
-    email: profile?.co_email || 'support@seebus.co.id',
-    mapLink:
-      profile?.co_map_lat && profile?.co_map_lng
-        ? `https://maps.google.com/?q=${profile.co_map_lat},${profile.co_map_lng}`
-        : 'https://maps.google.com/?q=-6.2241,106.8022',
+    badge: t.perusahaan.badgeSejak,
+    heroJudul: t.perusahaan.heroJudul,
+    heroDeskripsi: t.perusahaan.heroDeskripsi,
+    misi: t.perusahaan.misiKutipan,
+    amanJudul: t.perusahaan.perjalananAmanJudul,
+    amanDeskripsi: t.perusahaan.perjalananAmanDeskripsi,
+    statArmada: '500+',
+    statRute: '120',
+    statPenumpang: '2 Juta+',
+    komitmenJudul: t.perusahaan.komitmenJudul,
+    komitmenDeskripsi: t.perusahaan.komitmenDeskripsi,
+    alamat: t.perusahaan.alamatKantor,
+    telepon: '+62 21 555 0192',
+    email: 'support@seebus.co.id',
+    mapLink: 'https://maps.google.com/?q=-6.2241,106.8022',
   }
 
   return (

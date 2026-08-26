@@ -27,9 +27,24 @@ function authHeaders() {
       }
     : {}
 }
+// Semua request ke backend lewat sini, bukan fetch() langsung. Alasannya:
+// tanpa header "Accept: application/json", Laravel kadang membalas error
+// (500, dsb) dalam bentuk halaman HTML, bukan JSON -- akibatnya
+// handleResponse() gagal membaca pesan errornya dan cuma menampilkan teks
+// generik "Terjadi kesalahan" ke pengguna. Header ini memaksa Laravel
+// SELALU membalas JSON, apapun jenis errornya.
+async function apiFetch(url, options = {}) {
+  return fetch(url, {
+    ...options,
+    headers: {
+      Accept: 'application/json',
+      ...options.headers,
+    },
+  })
+}
 export const api = {
   getWilayah: async () => {
-    const res = await fetch(`${API_URL}/wilayah`)
+    const res = await apiFetch(`${API_URL}/wilayah`)
     const json = await handleResponse(res)
     return json.data
   },
@@ -39,17 +54,17 @@ export const api = {
       tujuan,
       tanggal,
     })
-    const res = await fetch(`${API_URL}/jadwal?${params}`)
+    const res = await apiFetch(`${API_URL}/jadwal?${params}`)
     const json = await handleResponse(res)
     return json.data
   },
   getKursi: async (availabilityId) => {
-    const res = await fetch(`${API_URL}/jadwal/${availabilityId}/kursi`)
+    const res = await apiFetch(`${API_URL}/jadwal/${availabilityId}/kursi`)
     const json = await handleResponse(res)
     return json.data
   },
   kirimPesan: async ({ nama, email, subjek, pesan }) => {
-    const res = await fetch(`${API_URL}/pesan`, {
+    const res = await apiFetch(`${API_URL}/pesan`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -64,7 +79,7 @@ export const api = {
     return handleResponse(res)
   },
   login: async ({ email, password }) => {
-    const res = await fetch(`${API_URL}/login`, {
+    const res = await apiFetch(`${API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,7 +92,7 @@ export const api = {
     return handleResponse(res)
   },
   logout: async () => {
-    const res = await fetch(`${API_URL}/logout`, {
+    const res = await apiFetch(`${API_URL}/logout`, {
       method: 'POST',
       headers: {
         ...authHeaders(),
@@ -86,7 +101,7 @@ export const api = {
     return handleResponse(res)
   },
   getMe: async () => {
-    const res = await fetch(`${API_URL}/user`, {
+    const res = await apiFetch(`${API_URL}/user`, {
       headers: {
         ...authHeaders(),
       },
@@ -94,7 +109,7 @@ export const api = {
     return handleResponse(res)
   },
   lockKursi: async ({ availability_id, nomor_kursi }) => {
-    const res = await fetch(`${API_URL}/kursi/lock`, {
+    const res = await apiFetch(`${API_URL}/kursi/lock`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -108,7 +123,7 @@ export const api = {
     return handleResponse(res)
   },
   unlockKursi: async ({ availability_id, nomor_kursi }) => {
-    const res = await fetch(`${API_URL}/kursi/unlock`, {
+    const res = await apiFetch(`${API_URL}/kursi/unlock`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -122,7 +137,7 @@ export const api = {
     return handleResponse(res)
   },
   createBooking: async (payload) => {
-    const res = await fetch(`${API_URL}/booking`, {
+    const res = await apiFetch(`${API_URL}/booking`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -132,7 +147,7 @@ export const api = {
     return handleResponse(res)
   },
   lookupBooking: async ({ bk_code, email }) => {
-    const res = await fetch(`${API_URL}/booking/lookup`, {
+    const res = await apiFetch(`${API_URL}/booking/lookup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -143,7 +158,7 @@ export const api = {
     return json.data
   },
   createPaypalOrder: async ({ booking_id }) => {
-    const res = await fetch(`${API_URL}/paypal/create-order`, {
+    const res = await apiFetch(`${API_URL}/paypal/create-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -153,7 +168,7 @@ export const api = {
     return handleResponse(res)
   },
   capturePaypalOrder: async ({ booking_id, orderID }) => {
-    const res = await fetch(`${API_URL}/paypal/capture-order`, {
+    const res = await apiFetch(`${API_URL}/paypal/capture-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -167,7 +182,7 @@ export const api = {
     if (status) params.set('status', status)
     if (cari) params.set('cari', cari)
     if (page) params.set('page', page)
-    const res = await fetch(`${API_URL}/admin/pesan?${params}`, {
+    const res = await apiFetch(`${API_URL}/admin/pesan?${params}`, {
       headers: {
         ...authHeaders(),
       },
@@ -175,7 +190,7 @@ export const api = {
     return handleResponse(res)
   },
   tandaiPesanDibaca: async (id) => {
-    const res = await fetch(`${API_URL}/admin/pesan/${id}/baca`, {
+    const res = await apiFetch(`${API_URL}/admin/pesan/${id}/baca`, {
       method: 'PATCH',
       headers: {
         ...authHeaders(),
@@ -184,7 +199,7 @@ export const api = {
     return handleResponse(res)
   },
   hapusPesan: async (id) => {
-    const res = await fetch(`${API_URL}/admin/pesan/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/pesan/${id}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders(),
@@ -196,7 +211,7 @@ export const api = {
     const params = new URLSearchParams()
     if (tanggal) params.set('tanggal', tanggal)
     if (page) params.set('page', page)
-    const res = await fetch(`${API_URL}/admin/jadwal?${params}`, {
+    const res = await apiFetch(`${API_URL}/admin/jadwal?${params}`, {
       headers: {
         ...authHeaders(),
       },
@@ -204,7 +219,7 @@ export const api = {
     return handleResponse(res)
   },
   getAdminJadwalOptions: async () => {
-    const res = await fetch(`${API_URL}/admin/jadwal-options`, {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-options`, {
       headers: {
         ...authHeaders(),
       },
@@ -212,7 +227,7 @@ export const api = {
     return handleResponse(res)
   },
   tambahJadwal: async (payload) => {
-    const res = await fetch(`${API_URL}/admin/jadwal`, {
+    const res = await apiFetch(`${API_URL}/admin/jadwal`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -223,7 +238,7 @@ export const api = {
     return handleResponse(res)
   },
   ubahJadwal: async (id, payload) => {
-    const res = await fetch(`${API_URL}/admin/jadwal/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/jadwal/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -234,7 +249,7 @@ export const api = {
     return handleResponse(res)
   },
   nonaktifkanJadwal: async (id) => {
-    const res = await fetch(`${API_URL}/admin/jadwal/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/jadwal/${id}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders(),
@@ -246,7 +261,7 @@ export const api = {
     const params = new URLSearchParams()
     if (cari) params.set('cari', cari)
     if (page) params.set('page', page)
-    const res = await fetch(`${API_URL}/admin/bus-type?${params}`, {
+    const res = await apiFetch(`${API_URL}/admin/bus-type?${params}`, {
       headers: {
         ...authHeaders(),
       },
@@ -254,7 +269,7 @@ export const api = {
     return handleResponse(res)
   },
   getAdminBusTypeOptions: async () => {
-    const res = await fetch(`${API_URL}/admin/bus-type-options`, {
+    const res = await apiFetch(`${API_URL}/admin/bus-type-options`, {
       headers: {
         ...authHeaders(),
       },
@@ -262,7 +277,7 @@ export const api = {
     return handleResponse(res)
   },
   tambahBusType: async (payload) => {
-    const res = await fetch(`${API_URL}/admin/bus-type`, {
+    const res = await apiFetch(`${API_URL}/admin/bus-type`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -273,7 +288,7 @@ export const api = {
     return handleResponse(res)
   },
   ubahBusType: async (id, payload) => {
-    const res = await fetch(`${API_URL}/admin/bus-type/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/bus-type/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -284,7 +299,7 @@ export const api = {
     return handleResponse(res)
   },
   hapusBusType: async (id) => {
-    const res = await fetch(`${API_URL}/admin/bus-type/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/bus-type/${id}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders(),
@@ -296,7 +311,7 @@ export const api = {
     const params = new URLSearchParams()
     if (cari) params.set('cari', cari)
     if (page) params.set('page', page)
-    const res = await fetch(`${API_URL}/admin/route?${params}`, {
+    const res = await apiFetch(`${API_URL}/admin/route?${params}`, {
       headers: {
         ...authHeaders(),
       },
@@ -304,7 +319,7 @@ export const api = {
     return handleResponse(res)
   },
   getAdminRouteOptions: async () => {
-    const res = await fetch(`${API_URL}/admin/route-options`, {
+    const res = await apiFetch(`${API_URL}/admin/route-options`, {
       headers: {
         ...authHeaders(),
       },
@@ -312,7 +327,7 @@ export const api = {
     return handleResponse(res)
   },
   tambahRoute: async (payload) => {
-    const res = await fetch(`${API_URL}/admin/route`, {
+    const res = await apiFetch(`${API_URL}/admin/route`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -323,7 +338,7 @@ export const api = {
     return handleResponse(res)
   },
   ubahRoute: async (id, payload) => {
-    const res = await fetch(`${API_URL}/admin/route/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/route/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -334,7 +349,7 @@ export const api = {
     return handleResponse(res)
   },
   hapusRoute: async (id) => {
-    const res = await fetch(`${API_URL}/admin/route/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/route/${id}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders(),
@@ -346,7 +361,7 @@ export const api = {
     const params = new URLSearchParams()
     if (cari) params.set('cari', cari)
     if (page) params.set('page', page)
-    const res = await fetch(`${API_URL}/admin/station?${params}`, {
+    const res = await apiFetch(`${API_URL}/admin/station?${params}`, {
       headers: {
         ...authHeaders(),
       },
@@ -354,7 +369,7 @@ export const api = {
     return handleResponse(res)
   },
   getAdminStationOptions: async () => {
-    const res = await fetch(`${API_URL}/admin/station-options`, {
+    const res = await apiFetch(`${API_URL}/admin/station-options`, {
       headers: {
         ...authHeaders(),
       },
@@ -362,7 +377,7 @@ export const api = {
     return handleResponse(res)
   },
   tambahStation: async (payload) => {
-    const res = await fetch(`${API_URL}/admin/station`, {
+    const res = await apiFetch(`${API_URL}/admin/station`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -373,7 +388,7 @@ export const api = {
     return handleResponse(res)
   },
   ubahStation: async (id, payload) => {
-    const res = await fetch(`${API_URL}/admin/station/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/station/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -384,32 +399,11 @@ export const api = {
     return handleResponse(res)
   },
   hapusStation: async (id) => {
-    const res = await fetch(`${API_URL}/admin/station/${id}`, {
+    const res = await apiFetch(`${API_URL}/admin/station/${id}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders(),
       },
-    })
-    return handleResponse(res)
-  },
-  getCompanyProfile: async () => {
-    const res = await fetch(`${API_URL}/company-profile`)
-    return handleResponse(res)
-  },
-  getAdminCompanyProfile: async () => {
-    const res = await fetch(`${API_URL}/admin/company-profile`, {
-      headers: { ...authHeaders() },
-    })
-    return handleResponse(res)
-  },
-  ubahCompanyProfile: async (payload) => {
-    const res = await fetch(`${API_URL}/admin/company-profile`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders(),
-      },
-      body: JSON.stringify(payload),
     })
     return handleResponse(res)
   },

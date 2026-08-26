@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\KursiController;
 use App\Http\Controllers\Api\PaypalController;
 use App\Http\Controllers\Api\PesanController;
 use App\Http\Controllers\Api\WilayahController;
-use App\Http\Controllers\Api\Admin\AdminCompanyController;
 use Illuminate\Support\Facades\Route;
 
 // Auth (dipakai admin untuk login ke panel admin)
@@ -55,9 +54,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/station', [AdminStationController::class, 'store']);
     Route::put('/station/{id}', [AdminStationController::class, 'update']);
     Route::delete('/station/{id}', [AdminStationController::class, 'destroy']);
-
-    Route::get('/company-profile', [AdminCompanyController::class, 'show']);
-    Route::put('/company-profile', [AdminCompanyController::class, 'update']);
 });
 
 // Booking publik (checkout bisa dipakai tamu maupun user login).

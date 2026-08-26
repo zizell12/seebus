@@ -13,10 +13,13 @@ import RequireAdmin from './components/RequireAdmin'
 import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminJadwal from './pages/admin/AdminJadwal'
+import AdminJadwalForm from './pages/admin/AdminJadwalForm'
 import AdminTipeBus from './pages/admin/AdminTipeBus'
+import AdminTipeBusForm from './pages/admin/AdminTipeBusForm'
 import AdminRute from './pages/admin/AdminRute'
+import AdminRuteForm from './pages/admin/AdminRuteForm'
 import AdminStasiun from './pages/admin/AdminStasiun'
-import AdminProfilPerusahaan from './pages/admin/AdminProfilPerusahaan'
+import AdminStasiunForm from './pages/admin/AdminStasiunForm'
 import WisataDetail from './pages/WisataDetail'
 import HasilPencarian from './pages/booking/HasilPencarian'
 import DataPenumpang from './pages/booking/DataPenumpang'
@@ -69,10 +72,17 @@ export default function App() {
       >
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/jadwal" element={<AdminJadwal />} />
+        <Route path="/admin/jadwal/tambah" element={<AdminJadwalForm />} />
+        <Route path="/admin/jadwal/edit/:id" element={<AdminJadwalForm />} />
         <Route path="/admin/tipe-bus" element={<AdminTipeBus />} />
+        <Route path="/admin/tipe-bus/tambah" element={<AdminTipeBusForm />} />
+        <Route path="/admin/tipe-bus/edit/:id" element={<AdminTipeBusForm />} />
         <Route path="/admin/rute" element={<AdminRute />} />
+        <Route path="/admin/rute/tambah" element={<AdminRuteForm />} />
+        <Route path="/admin/rute/edit/:id" element={<AdminRuteForm />} />
         <Route path="/admin/terminal" element={<AdminStasiun />} />
-        <Route path="/admin/profil-perusahaan" element={<AdminProfilPerusahaan />} />
+        <Route path="/admin/terminal/tambah" element={<AdminStasiunForm />} />
+        <Route path="/admin/terminal/edit/:id" element={<AdminStasiunForm />} />
       </Route>
     </Routes>
   )
