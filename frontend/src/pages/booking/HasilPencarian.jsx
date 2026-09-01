@@ -41,7 +41,7 @@ function BusCard({ bus, onPilih, t }) {
           </span>
         )}
         <h3 className="font-bold text-navy-900">{bus.operator}</h3>
-        <p className="text-xs text-gray-400 mb-3">{bus.kelas}</p>
+        <p className="text-xs text-gray-400 mb-3">{getTipeLabel(bus.kelas, t)}</p>
 
         <div className="flex items-center gap-4">
           <div>
@@ -187,8 +187,10 @@ export default function HasilPencarian() {
           ...item,
           id: item.availability_id,
           tipe: item.kategori,
+          kelas: item.kategori || '',
           waktuKategori: getWaktuKategoriFromJam(item.jam_berangkat),
           durasi: item.durasi_menit ? `${Math.floor(item.durasi_menit / 60)}j ${item.durasi_menit % 60}m` : '',
+          jamBerangkat: item.jam_berangkat || '',
           jamTiba: item.jam_tiba || '',
           terminalAsal: item.terminal_asal || '',
           terminalTujuan: item.terminal_tujuan || '',

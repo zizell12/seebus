@@ -237,6 +237,17 @@ export const api = {
     })
     return handleResponse(res)
   },
+  generateJadwal: async (payload) => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
   ubahJadwal: async (id, payload) => {
     const res = await apiFetch(`${API_URL}/admin/jadwal/${id}`, {
       method: 'PUT',

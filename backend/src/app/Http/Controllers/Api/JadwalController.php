@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -49,6 +50,11 @@ class JadwalController extends Controller
                 })
                 ->count();
 
+            $durasiMenit = $item->route->rt_duration_min;
+            $jamBerangkat = substr($item->av_time, 0, 5);
+            $waktuTiba = Carbon::parse($item->av_date->toDateString() . ' ' . $item->av_time)
+                ->addMinutes($durasiMenit ?? 0);
+
             return [
                 'availability_id' => $item->availability_id,
                 'operator' => $item->busType->company->co_name,
@@ -59,8 +65,10 @@ class JadwalController extends Controller
                 'terminal_asal' => $item->route->originStation->stn_name,
                 'terminal_tujuan' => $item->route->destinationStation->stn_name,
                 'tanggal' => $item->av_date->toDateString(),
-                'jam_berangkat' => substr($item->av_time, 0, 5),
-                'durasi_menit' => $item->route->rt_duration_min,
+                'jam_berangkat' => $jamBerangkat,
+                'durasi_menit' => $durasiMenit,
+                'jam_tiba' => $waktuTiba->format('H:i'),
+                'tanggal_tiba' => $waktuTiba->toDateString(),
                 'harga' => $item->av_price['adult'] ?? 0,
                 'harga_anak' => $item->av_price['child'] ?? 0,
                 'kursi_tersedia' => $kursiTersedia,

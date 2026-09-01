@@ -30,6 +30,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/jadwal-options', [AdminJadwalController::class, 'options']);
     Route::get('/jadwal', [AdminJadwalController::class, 'index']);
     Route::post('/jadwal', [AdminJadwalController::class, 'store']);
+    Route::post('/jadwal/generate', [AdminJadwalController::class, 'generate']);
     Route::put('/jadwal/{id}', [AdminJadwalController::class, 'update']);
     Route::delete('/jadwal/{id}', [AdminJadwalController::class, 'destroy']);
 

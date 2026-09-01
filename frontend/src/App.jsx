@@ -14,6 +14,7 @@ import AdminLayout from './components/admin/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminJadwal from './pages/admin/AdminJadwal'
 import AdminJadwalForm from './pages/admin/AdminJadwalForm'
+import AdminJadwalGenerate from './pages/admin/AdminJadwalGenerate'
 import AdminTipeBus from './pages/admin/AdminTipeBus'
 import AdminTipeBusForm from './pages/admin/AdminTipeBusForm'
 import AdminRute from './pages/admin/AdminRute'
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/jadwal" element={<AdminJadwal />} />
         <Route path="/admin/jadwal/tambah" element={<AdminJadwalForm />} />
+        <Route path="/admin/jadwal/generate" element={<AdminJadwalGenerate />} />
         <Route path="/admin/jadwal/edit/:id" element={<AdminJadwalForm />} />
         <Route path="/admin/tipe-bus" element={<AdminTipeBus />} />
         <Route path="/admin/tipe-bus/tambah" element={<AdminTipeBusForm />} />

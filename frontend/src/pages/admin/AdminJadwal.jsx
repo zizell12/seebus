@@ -67,12 +67,20 @@ export default function AdminJadwal() {
           <h1 className="text-xl md:text-2xl font-bold text-navy-900">{t.adminJadwalPage.judul}</h1>
           <p className="text-sm text-gray-500 mt-1">{t.adminJadwalPage.subJudul}</p>
         </div>
-        <Link
-          to="/admin/jadwal/tambah"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-red px-4 py-2.5 rounded-lg hover:bg-brand-red/90 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> {t.adminJadwalPage.tambahJadwal}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/jadwal/generate"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy-900 border border-gray-200 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCcw className="w-4 h-4" /> {t.adminJadwalPage.generateBerulang}
+          </Link>
+          <Link
+            to="/admin/jadwal/tambah"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-red px-4 py-2.5 rounded-lg hover:bg-brand-red/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> {t.adminJadwalPage.tambahJadwal}
+          </Link>
+        </div>
       </div>
 
       {notice && (

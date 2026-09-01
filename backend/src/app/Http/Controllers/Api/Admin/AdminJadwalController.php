@@ -125,6 +125,81 @@ class AdminJadwalController extends Controller
     }
 
     /**
+     * POST /api/admin/jadwal/generate
+     * Generate banyak jadwal sekaligus untuk satu rute + tipe bus, di rentang
+     * tanggal tertentu, dengan opsi memilih hari-dalam-minggu mana saja yang
+     * mau diisi (mis. cuma Senin/Rabu/Jumat) dan bisa lebih dari satu jam
+     * keberangkatan per hari.
+     */
+    public function generate(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'route_id' => 'required|exists:route,route_id',
+            'bus_type_id' => 'required|exists:bus_type,bus_type_id',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'hari' => 'required|array|min:1', // 0=Minggu ... 6=Sabtu
+            'hari.*' => 'integer|min:0|max:6',
+            'jam' => 'required|array|min:1',
+            'jam.*' => 'date_format:H:i',
+            'av_price' => 'required|array',
+            'av_price.adult' => 'required|numeric|min:0',
+            'av_price.child' => 'required|numeric|min:0',
+        ]);
+
+        // Batas rentang supaya admin tidak tidak sengaja generate ribuan
+        // baris (mis. salah pilih tanggal selesai tahun depan).
+        $mulai = \Carbon\Carbon::parse($data['tanggal_mulai']);
+        $selesai = \Carbon\Carbon::parse($data['tanggal_selesai']);
+        if ($mulai->diffInDays($selesai) > 90) {
+            return response()->json([
+                'message' => 'Rentang tanggal maksimal 90 hari sekali generate.',
+            ], 422);
+        }
+
+        $route = Route::findOrFail($data['route_id']);
+        $busType = BusType::findOrFail($data['bus_type_id']);
+
+        $dibuat = 0;
+        $dilewati = 0;
+
+        for ($tgl = $mulai->copy(); $tgl->lte($selesai); $tgl->addDay()) {
+            if (! in_array((int) $tgl->dayOfWeek, $data['hari'], true)) {
+                continue;
+            }
+
+            foreach ($data['jam'] as $jam) {
+                $sudahAda = Availability::where('route_id', $route->route_id)
+                    ->where('bus_type_id', $busType->bus_type_id)
+                    ->where('av_date', $tgl->toDateString())
+                    ->where('av_time', $jam.':00')
+                    ->exists();
+
+                if ($sudahAda) {
+                    $dilewati++;
+                    continue;
+                }
+
+                AvailabilityGenerator::createAvailability(
+                    $route,
+                    $busType,
+                    $tgl->toDateString(),
+                    $jam.':00',
+                    (int) $data['av_price']['adult'],
+                    (int) $data['av_price']['child'],
+                );
+                $dibuat++;
+            }
+        }
+
+        return response()->json([
+            'message' => "Berhasil generate {$dibuat} jadwal baru.".($dilewati ? " ({$dilewati} dilewati karena sudah ada)." : ''),
+            'dibuat' => $dibuat,
+            'dilewati' => $dilewati,
+        ], 201);
+    }
+
+    /**
      * PUT /api/admin/jadwal/{id}
      * Update harga, jam, atau status satu jadwal.
      */
