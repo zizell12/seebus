@@ -1,6 +1,5 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://seebus.local/api'
-// session_id dipakai backend untuk tahu siapa pemilik lock sementara sebuah
-// kursi (lihat KursiController::lock). Dibuat sekali per tab browser dan
+
 // disimpan di sessionStorage supaya tetap sama selama sesi booking berjalan.
 export function getSessionId() {
   const key = 'seebus_session_id'
@@ -27,12 +26,8 @@ function authHeaders() {
       }
     : {}
 }
-// Semua request ke backend lewat sini, bukan fetch() langsung. Alasannya:
-// tanpa header "Accept: application/json", Laravel kadang membalas error
-// (500, dsb) dalam bentuk halaman HTML, bukan JSON -- akibatnya
-// handleResponse() gagal membaca pesan errornya dan cuma menampilkan teks
-// generik "Terjadi kesalahan" ke pengguna. Header ini memaksa Laravel
-// SELALU membalas JSON, apapun jenis errornya.
+
+
 async function apiFetch(url, options = {}) {
   return fetch(url, {
     ...options,

@@ -61,7 +61,7 @@ export default function App() {
         <Route path="/pemesanan/lanjutkan" element={<LanjutkanPembayaran />} />
       </Route>
 
-      {/* Panel admin sengaja punya layout sendiri (header & footer khusus
+      {/* Panel admin punya layout sendiri (header & footer khusus
           admin) supaya navigasi di dalamnya selalu tetap di halaman admin,
           tidak nyasar ke halaman customer. */}
       <Route

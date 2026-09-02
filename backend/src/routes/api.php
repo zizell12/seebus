@@ -63,10 +63,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 // selama 15 menit, jadi spam di sini juga "menyandera" ketersediaan kursi).
 Route::post('/booking', [BookingController::class, 'store'])
     ->middleware('throttle:10,1');
-// booking_id yang dipakai endpoint PayPal di bawah ini cuma angka urut biasa
-// (gampang ditebak: 1, 2, 3, dst), jadi dirate-limit juga supaya endpoint ini
-// tidak bisa dipakai untuk terus-menerus memicu pembuatan order PayPal
-// (buang-buang kuota/biaya API PayPal) dengan booking_id yang ditebak-tebak.
+
 Route::post('/paypal/create-order', [PaypalController::class, 'createOrder'])
     ->middleware('throttle:10,1');
 Route::post('/paypal/capture-order', [PaypalController::class, 'captureOrder'])
