@@ -1,9 +1,25 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Bus } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 export default function Footer() {
   const { t } = useLanguage()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const handleBookingClick = (e) => {
+    e.preventDefault()
+    if (location.pathname === '/') {
+      // Jika sudah di halaman Beranda, scroll langsung
+      const element = document.getElementById('search-form')
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    } else {
+      // Jika di halaman lain, navigate ke Beranda dengan hash
+      navigate('/?scroll=search', { replace: false })
+    }
+  }
   return (
     <footer className="bg-gray-50 border-t">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -24,9 +40,9 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/" className="hover:text-navy-900">
+              <a href="/" onClick={handleBookingClick} className="hover:text-navy-900 cursor-pointer">
                 {t.footer.bookingTiket}
-              </Link>
+              </a>
             </li>
             <li>
               <Link to="/pemesanan/lanjutkan" className="hover:text-navy-900">

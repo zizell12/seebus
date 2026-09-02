@@ -1,5 +1,5 @@
-import React, { useRef } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useRef, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Ticket, Route, ShieldCheck, ChevronRight, ChevronLeft, Search, ListChecks, CreditCard } from 'lucide-react'
 import SearchForm from '../components/SearchForm'
 import { kotaWisataPopuler } from '../data/dummyData'
@@ -7,7 +7,21 @@ import { useLanguage } from '../context/LanguageContext'
 import backgrounddb from '../assets/background-db.png'
 export default function Beranda() {
   const { t } = useLanguage()
+  const [searchParams] = useSearchParams()
   const scrollRef = useRef(null)
+  
+  useEffect(() => {
+    // Handle scroll ketika datang dari Footer dengan query parameter
+    if (searchParams.get('scroll') === 'search') {
+      setTimeout(() => {
+        const element = document.getElementById('search-form')
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 300)
+    }
+  }, [searchParams])
+  
   const scroll = (arah) => {
     scrollRef.current?.scrollBy({
       left: arah * 320,
@@ -51,6 +65,7 @@ export default function Beranda() {
   return (
     <div>
       <section
+        id="search-form"
         className="relative bg-navy-900 bg-cover bg-center"
         style={{
           backgroundImage: `linear-gradient(rgba(11,30,77,0.85), rgba(11,30,77,0.75)), url(${backgrounddb})`,
