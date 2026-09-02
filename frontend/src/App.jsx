@@ -1,5 +1,6 @@
 import React from 'react'
 import { Routes, Route, Outlet } from 'react-router-dom'
+import ScrollToTop from './components/ScrollToTop'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Beranda from './pages/Beranda'
@@ -43,7 +44,9 @@ function CustomerLayout() {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route element={<CustomerLayout />}>
         <Route path="/" element={<Beranda />} />
         <Route path="/wilayah" element={<Wilayah />} />
@@ -87,5 +90,6 @@ export default function App() {
         <Route path="/admin/terminal/edit/:id" element={<AdminStasiunForm />} />
       </Route>
     </Routes>
+    </>
   )
 }
