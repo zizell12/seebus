@@ -107,33 +107,42 @@ export default function HasilPencarian() {
     })
     setEditMode(false)
   }
-  const [draftFilter, setDraftFilter] = useState({
+  // Dulu ada draftFilter (sementara) + appliedFilter (baru aktif setelah
+  // tombol "Simpan Filter" dipencet). Sekarang digabung jadi satu state
+  // filter yang langsung dipakai begitu diubah, jadi hasil pencarian
+  // otomatis ke-filter instan tanpa perlu tombol "Simpan Filter".
+  const [filter, setFilter] = useState({
     tipeBus: null,
     waktu: null,
     hargaMin: '',
     hargaMax: '',
     fasilitas: [],
   })
-  const [appliedFilter, setAppliedFilter] = useState({
-    tipeBus: null,
-    waktu: null,
-    hargaMin: '',
-    hargaMax: '',
-    fasilitas: [],
-  })
+  const resetFilter = () => {
+    setFilter({
+      tipeBus: null,
+      waktu: null,
+      hargaMin: '',
+      hargaMax: '',
+      fasilitas: [],
+    })
+    setVisibleCount(3)
+  }
   const pilihTunggal = (key, value) => {
-    setDraftFilter((prev) => ({
+    setFilter((prev) => ({
       ...prev,
       [key]: prev[key] === value ? null : value,
     }))
+    setVisibleCount(3)
   }
   const toggleFasilitas = (value) => {
-    setDraftFilter((prev) => ({
+    setFilter((prev) => ({
       ...prev,
       fasilitas: prev.fasilitas.includes(value)
         ? prev.fasilitas.filter((v) => v !== value)
         : [...prev.fasilitas, value],
     }))
+    setVisibleCount(3)
   }
   const [sortBy, setSortBy] = useState('harga')
   const [sortOpen, setSortOpen] = useState(false)
@@ -207,18 +216,18 @@ export default function HasilPencarian() {
   }, [dari, tujuan, tanggal])
   const hasilFiltered = useMemo(() => {
     let candidates = hasil
-    if (appliedFilter.tipeBus) candidates = candidates.filter((b) => b.tipe === appliedFilter.tipeBus)
-    if (appliedFilter.waktu) candidates = candidates.filter((b) => b.waktuKategori === appliedFilter.waktu)
-    if (appliedFilter.fasilitas.length)
-      candidates = candidates.filter((b) => appliedFilter.fasilitas.every((f) => b.fasilitas.includes(f)))
-    if (appliedFilter.hargaMin) candidates = candidates.filter((b) => b.harga >= Number(appliedFilter.hargaMin))
-    if (appliedFilter.hargaMax) candidates = candidates.filter((b) => b.harga <= Number(appliedFilter.hargaMax))
+    if (filter.tipeBus) candidates = candidates.filter((b) => b.tipe === filter.tipeBus)
+    if (filter.waktu) candidates = candidates.filter((b) => b.waktuKategori === filter.waktu)
+    if (filter.fasilitas.length)
+      candidates = candidates.filter((b) => filter.fasilitas.every((f) => b.fasilitas.includes(f)))
+    if (filter.hargaMin) candidates = candidates.filter((b) => b.harga >= Number(filter.hargaMin))
+    if (filter.hargaMax) candidates = candidates.filter((b) => b.harga <= Number(filter.hargaMax))
     return [...candidates].sort((a, b) => {
       if (sortBy === 'harga') return a.harga - b.harga
       if (sortBy === 'durasi') return durasiKeMenit(a.durasi) - durasiKeMenit(b.durasi)
       return jamKeMenit(a.jamBerangkat) - jamKeMenit(b.jamBerangkat)
     })
-  }, [dari, tujuan, appliedFilter, sortBy, hasil])
+  }, [dari, tujuan, filter, sortBy, hasil])
   const hasilTampil = hasilFiltered.slice(0, visibleCount)
   return (
     <div>
@@ -301,18 +310,7 @@ export default function HasilPencarian() {
         <aside className="card h-fit md:col-span-1">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-navy-900 text-sm">{t.busList.filter}</h3>
-            <button
-              onClick={() =>
-                setDraftFilter({
-                  tipeBus: null,
-                  waktu: null,
-                  hargaMin: '',
-                  hargaMax: '',
-                  fasilitas: [],
-                })
-              }
-              className="text-xs text-brand-red font-medium"
-            >
+            <button onClick={resetFilter} className="text-xs text-brand-red font-medium">
               {t.busList.reset}
             </button>
           </div>
@@ -324,7 +322,7 @@ export default function HasilPencarian() {
                 <label key={tipeKey} className="flex items-center gap-2 text-sm text-gray-600">
                   <input
                     type="checkbox"
-                    checked={draftFilter.tipeBus === tipeKey}
+                    checked={filter.tipeBus === tipeKey}
                     onChange={() => pilihTunggal('tipeBus', tipeKey)}
                     className="rounded accent-navy-900"
                   />
@@ -342,7 +340,7 @@ export default function HasilPencarian() {
                   key={waktuKey}
                   type="button"
                   onClick={() => pilihTunggal('waktu', waktuKey)}
-                  className={`text-left rounded-lg border px-2.5 py-2 text-xs transition-colors ${draftFilter.waktu === waktuKey ? 'border-navy-900 bg-navy-900/5 text-navy-900' : 'border-gray-200 text-gray-500'}`}
+                  className={`text-left rounded-lg border px-2.5 py-2 text-xs transition-colors ${filter.waktu === waktuKey ? 'border-navy-900 bg-navy-900/5 text-navy-900' : 'border-gray-200 text-gray-500'}`}
                 >
                   <span className="block font-medium">{getWaktuKategoriLabel(waktuKey, t)}</span>
                 </button>
@@ -357,13 +355,14 @@ export default function HasilPencarian() {
                 type="number"
                 min="0"
                 placeholder={t.busList.hargaMinPlaceholder}
-                value={draftFilter.hargaMin}
-                onChange={(e) =>
-                  setDraftFilter({
-                    ...draftFilter,
+                value={filter.hargaMin}
+                onChange={(e) => {
+                  setFilter({
+                    ...filter,
                     hargaMin: Math.max(0, Number(e.target.value)) || '',
                   })
-                }
+                  setVisibleCount(3)
+                }}
                 className="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs"
               />
               <span className="text-gray-400 text-xs">-</span>
@@ -371,13 +370,14 @@ export default function HasilPencarian() {
                 type="number"
                 min="0"
                 placeholder={t.busList.hargaMaksPlaceholder}
-                value={draftFilter.hargaMax}
-                onChange={(e) =>
-                  setDraftFilter({
-                    ...draftFilter,
+                value={filter.hargaMax}
+                onChange={(e) => {
+                  setFilter({
+                    ...filter,
                     hargaMax: Math.max(0, Number(e.target.value)) || '',
                   })
-                }
+                  setVisibleCount(3)
+                }}
                 className="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs"
               />
             </div>
@@ -391,23 +391,13 @@ export default function HasilPencarian() {
                   key={f}
                   type="button"
                   onClick={() => toggleFasilitas(f)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${draftFilter.fasilitas.includes(f) ? 'bg-navy-900 text-white border-navy-900' : 'border-gray-200 text-gray-500'}`}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${filter.fasilitas.includes(f) ? 'bg-navy-900 text-white border-navy-900' : 'border-gray-200 text-gray-500'}`}
                 >
                   {getFasilitasLabel(f, t)}
                 </button>
               ))}
             </div>
           </div>
-
-          <button
-            onClick={() => {
-              setAppliedFilter(draftFilter)
-              setVisibleCount(3)
-            }}
-            className="w-full bg-navy-900 text-white text-sm font-medium rounded-xl py-2.5 hover:bg-navy-800 transition-colors"
-          >
-            {t.busList.simpanFilter}
-          </button>
         </aside>
 
         <div className="md:col-span-3">
