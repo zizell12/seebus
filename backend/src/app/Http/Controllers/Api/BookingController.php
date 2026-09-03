@@ -18,10 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
-    // Komisi platform: bagian yang "ditahan" SeeBus, sisanya (net price) yang
-    // diteruskan ke PO bus. Biaya layanan ditambahkan di atas harga publish
-    // supaya bk_net_price, bk_publish_price, dan bk_total_price benar-benar
-    // tiga angka yang berbeda (bukan cuma disalin dari satu nilai yang sama).
+    
     private const KOMISI_PLATFORM = 0.10; // 10%
     private const BIAYA_LAYANAN = 5000; // Rp, flat per booking
 
@@ -74,12 +71,7 @@ class BookingController extends Controller
                 ]);
             }
 
-            // Kursi dianggap TIDAK tersedia hanya jika:
-            // - sudah 'booked' (final, tidak pernah lepas sendiri), atau
-            // - 'locked' DAN lock-nya masih berlaku (seat_locked_until belum lewat).
-            // Kursi 'locked' yang seat_locked_until-nya sudah lewat waktu (misal booking
-            // sebelumnya ditinggalkan tanpa lanjut bayar) dianggap tersedia lagi, supaya
-            // kursi tidak "terkunci selamanya" gara-gara tidak ada proses pembersihan lock.
+            
             $sessionId = $data['session_id'] ?? null;
 
             $tidakTersedia = $seats->filter(function ($seat) use ($sessionId) {
@@ -96,9 +88,7 @@ class BookingController extends Controller
                     return false;
                 }
 
-                // Locked, masih berlaku, dan session_id-nya sama dengan yang barusan
-                // mengunci kursi ini sendiri (lewat /kursi/lock saat konfirmasi di
-                // SeatPickerModal) -> boleh lanjut, bukan konflik dengan orang lain.
+                
                 return $seat->seat_locked_session !== $sessionId;
             });
             if ($tidakTersedia->isNotEmpty()) {
@@ -145,12 +135,7 @@ class BookingController extends Controller
                 'ct_nationality' => $data['contact']['ct_nationality'] ?? 'Indonesia',
             ]);
 
-            // user_id SENGAJA tidak diambil dari body request (client bisa kirim
-            // user_id siapa saja yang valid dan booking itu akan "ditempelkan"
-            // ke akun orang lain tanpa verifikasi apapun). Satu-satunya sumber
-            // yang bisa dipercaya adalah user yang benar-benar sedang login
-            // lewat token Sanctum-nya sendiri. Kalau tidak login (guest), tetap
-            // null seperti sebelumnya.
+            
             $userId = $request->user()?->user_id;
 
             // Harga dihitung dari av_price milik jadwal (Availability) yang
@@ -211,13 +196,7 @@ class BookingController extends Controller
             ]];
         });
 
-        // Kirim email berisi kode booking + link "Lanjutkan Pembayaran" SEGERA
-        // setelah booking dibuat (bukan cuma diselipkan di response API yang
-        // tidak pernah ditampilkan lagi di UI manapun). Ini satu-satunya cara
-        // customer yang tidak sempat mencatat kode bookingnya tetap punya
-        // jalan untuk melanjutkan pembayaran nanti. Dikirim di luar transaksi
-        // DB dan dibungkus try/catch supaya kegagalan kirim email (mis. SMTP
-        // down) tidak sampai menggagalkan booking yang sudah tersimpan.
+        
         $recipientEmail = $booking->contact?->ct_email;
         if ($recipientEmail && $recipientEmail !== 'customer@example.com') {
             try {
@@ -234,23 +213,7 @@ class BookingController extends Controller
         return response()->json($responseData, 201);
     }
 
-    /**
-     * POST /api/booking/lookup
-     *
-     * Dipakai halaman "Lanjutkan Pembayaran": karena data booking di frontend
-     * cuma hidup di BookingContext (React state di memori, hilang begitu tab
-     * ditutup/direfresh) dan sebelumnya TIDAK ADA endpoint sama sekali untuk
-     * mengambil ulang booking yang sudah dibuat, customer yang pembayarannya
-     * masih pending lalu meninggalkan halaman Pembayaran (refresh, salah
-     * pencet back, sinyal putus, dsb) tidak punya cara untuk melanjutkan
-     * pembayaran tersebut dari sisi aplikasi.
-     *
-     * Butuh bk_code (kode booking, dikirim ke customer) DAN email kontak
-     * sekaligus (bukan cuma salah satu) supaya kode booking yang cukup
-     * pendek (8 karakter) tidak bisa ditebak/di-brute-force begitu saja
-     * untuk mengintip data booking orang lain. Endpoint ini juga dibatasi
-     * rate limit lewat middleware 'throttle' di routes/api.php.
-     */
+    
     public function lookup(Request $request): JsonResponse
     {
         $data = $request->validate([

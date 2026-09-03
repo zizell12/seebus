@@ -1,15 +1,7 @@
 import staticCache from '../data/translationsCache.json'
 
 const CACHE_KEY = 'seebus_auto_translate_cache_v1'
-// Cache khusus untuk hasil translate seluruh struktur UI (translations.js),
-// supaya sekali di-translate, kunjungan berikutnya langsung tampil bahasa
-// Inggris tanpa nunggu API lagi.
-//
-// PENTING: kalau logic translate berubah (mis. perbaikan bug di file ini),
-// naikkan versi di akhir key ini (v1 -> v2 -> v3, dst). Ini bikin cache
-// lama yang mungkin tersimpan dari versi kode sebelumnya (misalnya cache
-// yang keburu kesimpen setengah gagal / kena limit API) otomatis dianggap
-// tidak ada, tanpa perlu user manual hapus localStorage lewat DevTools.
+
 const UI_TREE_CACHE_KEY = 'seebus_auto_translate_ui_tree_v2'
 
 function loadCache() {
@@ -29,12 +21,6 @@ function saveCache(cache) {
   }
 }
 
-// Placeholder seperti '{kota}', '{halaman}', '{total}' harus tetap utuh
-// setelah diterjemahkan (dipakai lewat .replace('{kota}', ...) di kode).
-// MyMemory kadang mengubah/menerjemahkan isi kurung kurawal, jadi sebelum
-// dikirim ke API, tiap placeholder diganti dulu jadi token aman
-// (mis. 'ZzKOTAzZ') yang hampir pasti tidak diterjemahkan, lalu setelah
-// hasil terjemahan datang, token itu dikembalikan ke bentuk aslinya.
 const PLACEHOLDER_REGEX = /\{([a-zA-Z0-9_]+)\}/g
 
 function protectPlaceholders(text) {
@@ -62,11 +48,7 @@ async function callTranslateApi(text) {
   const data = await res.json()
   const hasil = data?.responseData?.translatedText
 
-  // MyMemory (versi gratis, tanpa API key) tetap balas HTTP 200 walau
-  // kuota harian sudah habis -- isinya bukan error, tapi teks peringatan
   // semacam "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS...".
-  // Kalau ini dianggap terjemahan valid, teks itu bisa ke-cache permanen
-  // jadi sampah. Deteksi & anggap gagal supaya nanti dicoba ulang.
   if (!hasil || /MYMEMORY WARNING/i.test(hasil) || data?.responseStatus === 403) {
     throw new Error('Kuota/limit layanan translate gratis sedang habis')
   }
@@ -74,16 +56,6 @@ async function callTranslateApi(text) {
   return hasil
 }
 
-/**
- * Terjemahkan teks bahasa Indonesia ke Inggris secara otomatis lewat
- * MyMemory Translation API (gratis, tanpa API key). Dipakai supaya data
- * dummy (mis. deskripsi kota/tempat wisata) maupun teks UI cukup ditulis
- * dalam bahasa Indonesia saja -- versi Inggrisnya digenerate saat toggle
- * bahasa, bukan diketik manual satu-satu.
- *
- * Hasil translate disimpan di localStorage supaya teks yang sama tidak
- * diterjemahkan ulang tiap kali halaman dibuka / bahasa ditoggle.
- */
 export async function translateToEnglish(text) {
   if (!text) return text
 
@@ -180,11 +152,6 @@ export async function translateTree(node, { useCache = true, concurrency = 3 } =
 
   const kerangka = walk(node)
 
-  // Banyak teks yang sama muncul berkali-kali di UI (mis. label tombol,
-  // "Selesai", dsb). Terjemahkan tiap teks UNIK sekali saja -- selain
-  // lebih hemat kuota API gratis, ini juga menghindari beberapa request
-  // paralel yang menerjemahkan teks yang persis sama secara bersamaan
-  // (rebutan cache, boros, dan lebih gampang kena limit).
   const teksUnik = [...new Set(jobs)]
   const hasilUnik = new Map()
   let semuaBerhasil = true
@@ -221,11 +188,6 @@ export async function translateTree(node, { useCache = true, concurrency = 3 } =
 
   const treeJadi = isi(kerangka)
 
-  // PENTING: hanya kunci ke cache permanen kalau SEMUA teks berhasil
-  // diterjemahkan. Kalau ada yang gagal (mis. kena limit API gratis),
-  // jangan disimpan -- supaya percobaan berikutnya (reload / toggle
-  // bahasa lagi) otomatis mencoba ulang teks yang tadi gagal, bukan
-  // macet permanen menampilkan Bahasa Indonesia.
   if (useCache && semuaBerhasil) saveUiTreeCache(treeJadi)
 
   return treeJadi

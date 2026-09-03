@@ -15,8 +15,6 @@ use App\Http\Controllers\Api\WilayahController;
 use Illuminate\Support\Facades\Route;
 
 // Auth (dipakai admin untuk login ke panel admin)
-// Rate-limited supaya password tidak bisa di-brute-force lewat percobaan
-// login bertubi-tubi.
 Route::post('/login', [AuthController::class, 'login'])
     ->middleware('throttle:6,1');
 
@@ -59,8 +57,6 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
 // Booking publik (checkout bisa dipakai tamu maupun user login).
 // Rate-limited supaya endpoint ini tidak dibanjiri booking palsu secara
-// otomatis (tiap booking bikin baris baru di database dan mengunci kursi
-// selama 15 menit, jadi spam di sini juga "menyandera" ketersediaan kursi).
 Route::post('/booking', [BookingController::class, 'store'])
     ->middleware('throttle:10,1');
 
@@ -69,7 +65,7 @@ Route::post('/paypal/create-order', [PaypalController::class, 'createOrder'])
 Route::post('/paypal/capture-order', [PaypalController::class, 'captureOrder'])
     ->middleware('throttle:10,1');
 
-// Cek/lanjutkan booking yang masih pending (halaman "Lanjutkan Pembayaran").
+// booking yang masih pending (halaman "Lanjutkan Pembayaran").
 // Rate-limited supaya bk_code (8 karakter) tidak bisa di-brute-force.
 Route::post('/booking/lookup', [BookingController::class, 'lookup'])
     ->middleware('throttle:10,1');

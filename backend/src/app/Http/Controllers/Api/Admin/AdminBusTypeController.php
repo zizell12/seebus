@@ -19,11 +19,7 @@ class AdminBusTypeController extends Controller
         'Kursi Standar 2-3', 'Kasur Individu', 'USB Charger', 'Legrest', 'Selimut',
     ];
 
-    /**
-     * Proyek ini cuma untuk 1 perusahaan, jadi company_id tidak lagi
-     * diminta dari form -- selalu diambil dari satu-satunya baris yang ada
-     * di tabel company (yang sama dipakai untuk "Profil Perusahaan").
-     */
+
     private function satuSatunyaCompanyId(): int
     {
         $company = Company::first();
@@ -65,12 +61,7 @@ class AdminBusTypeController extends Controller
         return response()->json($busTypes);
     }
 
-    /**
-     * GET /api/admin/bus-type-options
-     * Nama perusahaan (buat ditampilkan sebagai info read-only di form,
-     * bukan dropdown -- proyek ini cuma 1 perusahaan jadi tidak perlu
-     * dipilih) dan daftar fasilitas umum untuk pilihan cepat.
-     */
+    
     public function options(): JsonResponse
     {
         return response()->json([

@@ -3,11 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { api } from '../utils/api'
 import { useLanguage } from '../context/LanguageContext'
 
-// Bungkus halaman admin manapun dengan komponen ini supaya cuma bisa
-// diakses kalau user sudah login DAN usr_role-nya admin. Contoh pakai:
-//
-//   <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
-//
+
 export default function RequireAdmin({ children }) {
   const { t } = useLanguage()
   const [status, setStatus] = useState('checking') // checking | allowed | denied

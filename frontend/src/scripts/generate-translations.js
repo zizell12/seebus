@@ -1,34 +1,3 @@
-// Script sekali-jalan: kumpulin semua teks Indonesia yang perlu terjemahan
-// Inggris -- baik teks UI statis di data/translations.js (nav, tombol,
-// judul halaman, dst, lewat objek `translations.id`) maupun teks yang
-// ditampilkan lewat <AutoText /> (deskripsi kota/tempat wisata di
-// dummyData.js, keterangan terminal di wilayahData.js) -- terjemahkan ke
-// Inggris lewat MyMemory API, lalu simpan hasilnya ke
-// src/data/translationsCache.json.
-//
-// Setelah cache ini ada, translateTree()/AutoText akan baca dari sini
-// duluan (instan, tanpa nunggu API) -- API translate cuma dipanggil live
-// kalau ada teks baru yang belum ada di cache. Artinya: cukup tulis teks
-// dalam bahasa Indonesia di translations.js / dummyData.js / wilayahData.js,
-// versi Inggrisnya otomatis ter-generate -- tidak perlu diketik manual.
-//
-// Cara pakai (dari folder frontend/):
-//   node src/scripts/generate-translations.js
-//
-// Lewat Docker (container: seebus_frontend):
-//   docker exec seebus_frontend node src/scripts/generate-translations.js
-//
-// TIPS KUOTA: API gratis MyMemory tanpa email cuma dapat jatah 5.000
-// karakter/hari per IP, dan gampang kena "429 Too Many Requests" kalau
-// request-nya banyak/berturut-turut. Kalau nyertain alamat email kontak,
-// jatahnya naik jadi 50.000 karakter/hari (aturan resmi MyMemory). Pasang
-// lewat env var MYMEMORY_EMAIL saat menjalankan:
-//   docker exec -e MYMEMORY_EMAIL=nama@email.com seebus_frontend node src/scripts/generate-translations.js
-//
-// Jalankan ulang tiap kali nambah/ubah teks baru di translations.js,
-// dummyData.js, atau wilayahData.js -- teks yang sudah ada di cache tidak
-// akan diterjemahkan ulang, cuma yang baru/gagal saja.
-
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -166,9 +135,6 @@ async function main() {
       console.warn(`[${i + 1}/${belumAda.length}] GAGAL (dilewati, coba lagi run berikutnya): ${teks.slice(0, 50)}... (${err.message})`)
     }
 
-    // Simpan progres tiap 20 teks -- kalau proses berhenti di tengah jalan
-    // (mis. kuota harian benar-benar habis), teks yang sudah berhasil
-    // tidak hilang dan tidak perlu diterjemahkan ulang di run berikutnya.
     if ((i + 1) % 20 === 0) {
       fs.mkdirSync(path.dirname(cachePath), { recursive: true })
       fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2))

@@ -10,14 +10,7 @@ use Illuminate\Http\Request;
 
 class JadwalController extends Controller
 {
-    /**
-     * GET /api/jadwal?dari=Jember&tujuan=Surabaya&tanggal=2026-07-20
-     * Cari jadwal bus berdasarkan kota asal, tujuan, dan tanggal.
-     *
-     * Catatan: hanya menampilkan jadwal yang memang sudah ada (di-seed atau
-     * ditambahkan lewat panel admin). Tidak ada lagi generate jadwal
-     * on-demand di sini, supaya data yang tampil selalu jadwal "nyata".
-     */
+    
     public function index(Request $request): JsonResponse
     {
         $request->validate([

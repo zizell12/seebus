@@ -34,13 +34,6 @@ class AdminStationController extends Controller
         return response()->json($stations);
     }
 
-    /**
-     * GET /api/admin/station-options
-     * Daftar wilayah (kota) yang sudah ada, dipakai untuk dropdown di form
-     * tambah/edit terminal. Terminal baru harus ikut salah satu wilayah
-     * yang sudah terdaftar (lihat tabel "region"); menambah wilayah baru
-     * bukan bagian dari fitur ini.
-     */
     public function options(): JsonResponse
     {
         $regions = Region::orderBy('rg_city')
@@ -97,13 +90,6 @@ class AdminStationController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /api/admin/station/{id}
-     * Hapus terminal. Ditolak kalau terminal ini masih dipakai sebagai
-     * asal/tujuan di salah satu rute, supaya rute & jadwal yang sudah ada
-     * tidak rusak (sama seperti aturan di AdminRouteController::destroy
-     * dan AdminBusTypeController::destroy).
-     */
     public function destroy(int $id): JsonResponse
     {
         $station = Station::findOrFail($id);

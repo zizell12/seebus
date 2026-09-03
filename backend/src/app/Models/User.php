@@ -17,11 +17,7 @@ class User extends Authenticatable
 
     protected $hidden = ['usr_password_hash'];
 
-    /**
-     * Laravel secara default mencari kolom "password" untuk auth.
-     * Karena kolom kamu namanya "usr_password_hash", override method ini
-     * supaya Laravel tahu harus baca dari kolom itu.
-     */
+    
     public function getAuthPassword()
     {
         return $this->usr_password_hash;
