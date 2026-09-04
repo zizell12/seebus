@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Calendar, Users, ChevronDown, Wifi, Snowflake, Coffee, ArrowRight } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
 import PenumpangPicker from '../../components/PenumpangPicker'
@@ -17,6 +17,34 @@ const fasilitasIcons = {
 }
 const fasilitasKeys = ['ac', 'wifi', 'snack']
 const sortKeys = ['harga', 'durasi', 'berangkat']
+const filterDefault = {
+  tipeBus: null,
+  waktu: null,
+  hargaMin: '',
+  hargaMax: '',
+  fasilitas: [],
+}
+function filterFromSearchParams(searchParams) {
+  return {
+    tipeBus: searchParams.get('tipeBus') || null,
+    waktu: searchParams.get('waktu') || null,
+    hargaMin: searchParams.get('hargaMin') || '',
+    hargaMax: searchParams.get('hargaMax') || '',
+    fasilitas: searchParams.get('fasilitas') ? searchParams.get('fasilitas').split(',') : [],
+  }
+}
+function updateFilterParams(searchParams, nextFilter, nextSortBy) {
+  const nextParams = new URLSearchParams(searchParams)
+  const filterKeys = ['tipeBus', 'waktu', 'hargaMin', 'hargaMax', 'fasilitas', 'sort']
+  filterKeys.forEach((key) => nextParams.delete(key))
+  if (nextFilter.tipeBus) nextParams.set('tipeBus', nextFilter.tipeBus)
+  if (nextFilter.waktu) nextParams.set('waktu', nextFilter.waktu)
+  if (nextFilter.hargaMin) nextParams.set('hargaMin', String(nextFilter.hargaMin))
+  if (nextFilter.hargaMax) nextParams.set('hargaMax', String(nextFilter.hargaMax))
+  if (nextFilter.fasilitas.length) nextParams.set('fasilitas', nextFilter.fasilitas.join(','))
+  if (nextSortBy !== 'harga') nextParams.set('sort', nextSortBy)
+  return nextParams
+}
 function jamKeMenit(jam) {
   const [h, m] = jam.split(':').map(Number)
   return h * 60 + m
@@ -84,9 +112,17 @@ function BusCard({ bus, onPilih, t }) {
 }
 export default function HasilPencarian() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { t, lang } = useLanguage()
   const { booking, selectBus, updateSearch } = useBooking()
-  const { dari, tujuan, tanggal, penumpang } = booking.search
+  const dari = searchParams.get('dari') || booking.search.dari
+  const tujuan = searchParams.get('tujuan') || booking.search.tujuan
+  const tanggal = searchParams.get('tanggal') || booking.search.tanggal
+  const penumpang = {
+    dewasa: searchParams.has('dewasa') ? Number(searchParams.get('dewasa')) : booking.search.penumpang.dewasa || 1,
+    anak: searchParams.has('anak') ? Number(searchParams.get('anak')) : booking.search.penumpang.anak || 0,
+    bayi: searchParams.has('bayi') ? Number(searchParams.get('bayi')) : booking.search.penumpang.bayi || 0,
+  }
   const [hasil, setHasil] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -100,10 +136,21 @@ export default function HasilPencarian() {
   }
   const handleUbahSubmit = (e) => {
     e.preventDefault()
-    updateSearch({
+    const nextSearch = {
       ...booking.search,
+      dari,
+      tujuan,
       tanggal: editTanggal,
       penumpang: editPenumpang,
+    }
+    updateSearch(nextSearch)
+    setSearchParams({
+      dari,
+      tujuan,
+      tanggal: editTanggal,
+      dewasa: String(editPenumpang.dewasa),
+      anak: String(editPenumpang.anak),
+      bayi: String(editPenumpang.bayi),
     })
     setEditMode(false)
   }
@@ -111,41 +158,44 @@ export default function HasilPencarian() {
   // tombol "Simpan Filter" dipencet). Sekarang digabung jadi satu state
   // filter yang langsung dipakai begitu diubah, jadi hasil pencarian
   // otomatis ke-filter instan tanpa perlu tombol "Simpan Filter".
-  const [filter, setFilter] = useState({
-    tipeBus: null,
-    waktu: null,
-    hargaMin: '',
-    hargaMax: '',
-    fasilitas: [],
-  })
+  const [filter, setFilter] = useState(() => filterFromSearchParams(searchParams))
+  const [sortBy, setSortBy] = useState(() => searchParams.get('sort') || 'harga')
+  useEffect(() => {
+    setFilter(filterFromSearchParams(searchParams))
+    setSortBy(searchParams.get('sort') || 'harga')
+  }, [searchParams])
+  const applyFilter = (nextFilter) => {
+    setFilter(nextFilter)
+    setSearchParams(updateFilterParams(searchParams, nextFilter, sortBy))
+  }
   const resetFilter = () => {
-    setFilter({
-      tipeBus: null,
-      waktu: null,
-      hargaMin: '',
-      hargaMax: '',
-      fasilitas: [],
-    })
+    applyFilter(filterDefault)
     setVisibleCount(3)
   }
   const pilihTunggal = (key, value) => {
-    setFilter((prev) => ({
-      ...prev,
-      [key]: prev[key] === value ? null : value,
-    }))
+    const nextFilter = {
+      ...filter,
+      [key]: filter[key] === value ? null : value,
+    }
+    applyFilter(nextFilter)
     setVisibleCount(3)
   }
   const toggleFasilitas = (value) => {
-    setFilter((prev) => ({
-      ...prev,
-      fasilitas: prev.fasilitas.includes(value)
-        ? prev.fasilitas.filter((v) => v !== value)
-        : [...prev.fasilitas, value],
-    }))
+    const nextFilter = {
+      ...filter,
+      fasilitas: filter.fasilitas.includes(value)
+        ? filter.fasilitas.filter((v) => v !== value)
+        : [...filter.fasilitas, value],
+    }
+    applyFilter(nextFilter)
     setVisibleCount(3)
   }
-  const [sortBy, setSortBy] = useState('harga')
   const [sortOpen, setSortOpen] = useState(false)
+  const pilihUrutan = (key) => {
+    setSortBy(key)
+    setSearchParams(updateFilterParams(searchParams, filter, key))
+    setSortOpen(false)
+  }
   const handlePilihBus = (bus) => {
     selectBus({
       availability_id: bus.availability_id,
@@ -357,7 +407,7 @@ export default function HasilPencarian() {
                 placeholder={t.busList.hargaMinPlaceholder}
                 value={filter.hargaMin}
                 onChange={(e) => {
-                  setFilter({
+                  applyFilter({
                     ...filter,
                     hargaMin: Math.max(0, Number(e.target.value)) || '',
                   })
@@ -372,7 +422,7 @@ export default function HasilPencarian() {
                 placeholder={t.busList.hargaMaksPlaceholder}
                 value={filter.hargaMax}
                 onChange={(e) => {
-                  setFilter({
+                  applyFilter({
                     ...filter,
                     hargaMax: Math.max(0, Number(e.target.value)) || '',
                   })
@@ -416,10 +466,7 @@ export default function HasilPencarian() {
                   {sortKeys.map((key) => (
                     <button
                       key={key}
-                      onClick={() => {
-                        setSortBy(key)
-                        setSortOpen(false)
-                      }}
+                      onClick={() => pilihUrutan(key)}
                       className={`block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 ${sortBy === key ? 'text-brand-red font-medium' : 'text-gray-600'}`}
                     >
                       {sortLabel(key)}

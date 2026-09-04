@@ -9,11 +9,6 @@ function parseSeatCode(code) {
     : { letter: code, number: 0 }
 }
 
-// Susunan kursi kiri-kanan berbeda tergantung jumlah kolom per baris:
-// 2 kolom (Sleeper) -> 1 kiri, 1 kanan (kabin individu kiri-kanan lorong)
-// 3 kolom (Eksekutif) -> 2 kiri, 1 kanan
-// 5 kolom (Ekonomi) -> 2 kiri, 3 kanan
-// Selain itu, fallback dibagi rata (bulatkan ke atas untuk sisi kiri).
 function splitKiriKanan(totalKolom) {
   const preset = { 2: 1, 3: 2, 5: 2 }
   const kiri = preset[totalKolom] ?? Math.ceil(totalKolom / 2)

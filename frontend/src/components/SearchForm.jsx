@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Calendar, ArrowRightLeft } from 'lucide-react'
 import { useBooking } from '../context/BookingContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -8,20 +8,12 @@ import { kotaList as kotaListDummy } from '../data/dummyData'
 import PenumpangPicker from './PenumpangPicker'
 export default function SearchForm() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { updateSearch } = useBooking()
   const { t } = useLanguage()
   const [kotaList, setKotaList] = useState([])
   const [loadingKota, setLoadingKota] = useState(true)
-  const [form, setForm] = useState({
-    dari: '',
-    tujuan: '',
-    tanggal: '',
-    penumpang: {
-      dewasa: 1,
-      anak: 0,
-      bayi: 0,
-    },
-  })
+  const [form, setForm] = useState(() => formFromSearchParams(searchParams))
   const [error, setError] = useState('')
   useEffect(() => {
     api
@@ -30,6 +22,13 @@ export default function SearchForm() {
       .catch(() => setKotaList(kotaListDummy))
       .finally(() => setLoadingKota(false))
   }, [])
+  useEffect(() => {
+    if (searchParams.has('dari') || searchParams.has('tujuan') || searchParams.has('tanggal')) {
+      const nextForm = formFromSearchParams(searchParams)
+      setForm(nextForm)
+      updateSearch(nextForm)
+    }
+  }, [searchParams])
   const swap = () =>
     setForm((f) => ({
       ...f,
@@ -48,7 +47,15 @@ export default function SearchForm() {
     }
     setError('')
     updateSearch(form)
-    navigate('/pencarian')
+    const params = new URLSearchParams({
+      dari: form.dari,
+      tujuan: form.tujuan,
+      tanggal: form.tanggal,
+      dewasa: String(form.penumpang.dewasa),
+      anak: String(form.penumpang.anak),
+      bayi: String(form.penumpang.bayi),
+    })
+    navigate(`/pencarian?${params.toString()}`)
   }
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-4 md:p-5">
@@ -141,6 +148,18 @@ export default function SearchForm() {
       </div>
     </form>
   )
+}
+function formFromSearchParams(searchParams) {
+  return {
+    dari: searchParams.get('dari') || '',
+    tujuan: searchParams.get('tujuan') || '',
+    tanggal: searchParams.get('tanggal') || '',
+    penumpang: {
+      dewasa: Number(searchParams.get('dewasa')) || 1,
+      anak: Number(searchParams.get('anak')) || 0,
+      bayi: Number(searchParams.get('bayi')) || 0,
+    },
+  }
 }
 function Field({ label, icon, children }) {
   return (
