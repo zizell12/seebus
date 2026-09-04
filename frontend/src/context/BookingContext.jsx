@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react'
 const BookingContext = createContext(null)
+const BOOKING_STORAGE_KEY = 'seebus_booking_draft'
 const initialState = {
   search: {
     dari: '',
@@ -29,66 +30,96 @@ const initialState = {
     status: 'pending',
   },
 }
+function loadBookingState() {
+  try {
+    const saved = sessionStorage.getItem(BOOKING_STORAGE_KEY)
+    if (!saved) return initialState
+    const parsed = JSON.parse(saved)
+    return {
+      ...initialState,
+      ...parsed,
+      search: { ...initialState.search, ...parsed.search, penumpang: { ...initialState.search.penumpang, ...parsed.search?.penumpang } },
+      contact: { ...initialState.contact, ...parsed.contact },
+      payment: { ...initialState.payment, ...parsed.payment },
+    }
+  } catch {
+    return initialState
+  }
+}
 export function BookingProvider({ children }) {
-  const [booking, setBooking] = useState(initialState)
+  const [booking, setBooking] = useState(loadBookingState)
+  const saveBooking = (updater) => {
+    setBooking((previousBooking) => {
+      const nextBooking = typeof updater === 'function' ? updater(previousBooking) : updater
+      try {
+        sessionStorage.setItem(BOOKING_STORAGE_KEY, JSON.stringify(nextBooking))
+      } catch {
+        // Draft tetap berjalan meskipun penyimpanan browser tidak tersedia.
+      }
+      return nextBooking
+    })
+  }
   const updateSearch = (search) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       search,
     }))
   const selectBus = (bus) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       selectedBus: bus,
     }))
   const selectSeats = (seats) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       selectedSeats: seats,
     }))
   const setPassengers = (passengers) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       passengers,
     }))
   const setContact = (contact) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       contact,
     }))
   const setBookingId = (bookingId) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       booking_id: bookingId,
     }))
   const setBookingCode = (bookingCode) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       booking_code: bookingCode,
     }))
   const setHarga = (harga) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       harga,
     }))
   const setNotes = (notes) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       notes,
     }))
   const setPayment = (payment) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       payment,
     }))
-  const resetBooking = () => setBooking(initialState)
+  const resetBooking = () => {
+    setBooking(initialState)
+    sessionStorage.removeItem(BOOKING_STORAGE_KEY)
+  }
   // Dipakai halaman "Lanjutkan Pembayaran" (LanjutkanPembayaran.jsx) untuk
   // mengisi ulang BookingContext dari data booking pending yang diambil
   // lewat api.lookupBooking, dengan bentuk yang sama seperti yang dihasilkan
   // alur booking normal (SearchForm -> HasilPencarian -> DataPenumpang),
   // supaya halaman Pembayaran.jsx bisa langsung dipakai lagi tanpa perubahan.
   const hydrateFromLookup = (data) =>
-    setBooking((b) => ({
+    saveBooking((b) => ({
       ...b,
       booking_id: data.booking_id,
       booking_code: data.bk_code,

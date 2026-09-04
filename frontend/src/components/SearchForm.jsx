@@ -9,11 +9,13 @@ import PenumpangPicker from './PenumpangPicker'
 export default function SearchForm() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { updateSearch } = useBooking()
+  const { booking, updateSearch } = useBooking()
   const { t } = useLanguage()
   const [kotaList, setKotaList] = useState([])
   const [loadingKota, setLoadingKota] = useState(true)
-  const [form, setForm] = useState(() => formFromSearchParams(searchParams))
+  const [form, setForm] = useState(() =>
+    hasSearchParams(searchParams) ? formFromSearchParams(searchParams) : booking.search,
+  )
   const [error, setError] = useState('')
   useEffect(() => {
     api
@@ -23,7 +25,7 @@ export default function SearchForm() {
       .finally(() => setLoadingKota(false))
   }, [])
   useEffect(() => {
-    if (searchParams.has('dari') || searchParams.has('tujuan') || searchParams.has('tanggal')) {
+    if (hasSearchParams(searchParams)) {
       const nextForm = formFromSearchParams(searchParams)
       setForm(nextForm)
       updateSearch(nextForm)
@@ -148,6 +150,9 @@ export default function SearchForm() {
       </div>
     </form>
   )
+}
+function hasSearchParams(searchParams) {
+  return searchParams.has('dari') || searchParams.has('tujuan') || searchParams.has('tanggal')
 }
 function formFromSearchParams(searchParams) {
   return {

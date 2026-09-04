@@ -50,7 +50,7 @@ export default function SeatPickerModal({ open, onClose, jumlahKursi, seats = []
     if (seat.status !== 'empty') return
     setDipilih((prev) => {
       if (prev.includes(seat.nomor)) return prev.filter((k) => k !== seat.nomor)
-      if (prev.length >= jumlahKursi) return prev
+      if (prev.length >= jumlahKursi) return [...prev.slice(0, jumlahKursi - 1), seat.nomor]
       return [...prev, seat.nomor]
     })
   }

@@ -9,26 +9,72 @@ import { useLanguage } from '../../context/LanguageContext'
 import { api, getSessionId } from '../../utils/api'
 import { savePendingBooking } from '../../utils/pendingBooking'
 import backgrounddb from '../../assets/background-db.png'
+function getPassengerDraftKey(selectedBus) {
+  return `seebus_passenger_draft_${selectedBus?.availability_id || selectedBus?.id || 'unknown'}`
+}
+function loadPassengerDraft(selectedBus, jumlahKursi) {
+  try {
+    const saved = sessionStorage.getItem(getPassengerDraftKey(selectedBus))
+    if (!saved) return null
+    const draft = JSON.parse(saved)
+    return {
+      detailPenumpang: Array.from({ length: jumlahKursi }, (_, index) => ({
+        nama: '',
+        usia: '',
+        jenisKelamin: 'Laki-laki',
+        kewarganegaraan: 'Indonesia',
+        ...draft.detailPenumpang?.[index],
+      })),
+      kontak: draft.kontak,
+      pesan: draft.pesan || '',
+      tahap: draft.tahap || 'form',
+      kursiTerpilih: draft.kursiTerpilih || null,
+    }
+  } catch {
+    return null
+  }
+}
 export default function DataPenumpang() {
   const navigate = useNavigate()
   const { t } = useLanguage()
   const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId, setBookingCode, setHarga } = useBooking()
   const { selectedBus } = booking
   const jumlahKursi = kursiDibutuhkan(booking.search.penumpang)
-  const [tahap, setTahap] = useState('form')
+  const passengerDraft = loadPassengerDraft(selectedBus, jumlahKursi)
+  const [tahap, setTahap] = useState(passengerDraft?.tahap || 'form')
   const [modalOpen, setModalOpen] = useState(false)
   const [seats, setSeats] = useState([])
   const [seatLoading, setSeatLoading] = useState(false)
   const [seatError, setSeatError] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingError, setBookingError] = useState(null)
-  const [kontak, setKontak] = useState({
-    nama: '',
-    email: '',
-    phone: '',
-    kewarganegaraan: 'Indonesia',
-  })
-
+  const [kontak, setKontak] = useState(passengerDraft?.kontak || booking.contact)
+  const [pesan, setPesan] = useState(passengerDraft?.pesan || booking.notes)
+  const [detailPenumpang, setDetailPenumpang] = useState(
+    passengerDraft?.detailPenumpang ||
+      Array.from(
+        {
+          length: jumlahKursi,
+        },
+        () => ({
+          nama: '',
+          usia: '',
+          jenisKelamin: 'Laki-laki',
+          kewarganegaraan: 'Indonesia',
+        }),
+      ),
+  )
+  const [kursiTerpilih, setKursiTerpilih] = useState(passengerDraft?.kursiTerpilih || null)
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        getPassengerDraftKey(selectedBus),
+        JSON.stringify({ detailPenumpang, kontak, pesan, tahap, kursiTerpilih }),
+      )
+    } catch {
+      // Form tetap dapat digunakan meskipun penyimpanan browser tidak tersedia.
+    }
+  }, [selectedBus, detailPenumpang, kontak, pesan, tahap, kursiTerpilih])
   useEffect(() => {
     if (!selectedBus) navigate('/pencarian')
   }, [selectedBus, navigate])
@@ -51,22 +97,8 @@ export default function DataPenumpang() {
     loadSeats()
   }, [selectedBus, tahap])
 
-  const [detailPenumpang, setDetailPenumpang] = useState(
-    Array.from(
-      {
-        length: jumlahKursi,
-      },
-      () => ({
-        nama: '',
-        usia: '',
-        jenisKelamin: 'Laki-laki',
-        kewarganegaraan: 'Indonesia',
-      }),
-    ),
-  )
-  const [pesan, setPesan] = useState('')
-  const [kursiTerpilih, setKursiTerpilih] = useState(null)
   const kursiTerpilihRef = useRef(null)
+  const kursiTerkunciRef = useRef(null)
   const bookingDibuatRef = useRef(false)
   useEffect(() => {
     kursiTerpilihRef.current = kursiTerpilih
@@ -77,11 +109,11 @@ export default function DataPenumpang() {
       // dibuat, lepas lock kursi supaya tidak menahan kursi tanpa guna.
       // Best-effort: kalau request tidak sempat selesai (misal tab ditutup),
       // job pembersih lock kedaluwarsa di backend yang akan melepasnya.
-      if (!bookingDibuatRef.current && kursiTerpilihRef.current?.nomor?.length && selectedBus?.availability_id) {
+      if (!bookingDibuatRef.current && kursiTerkunciRef.current?.length && selectedBus?.availability_id) {
         api
           .unlockKursi({
             availability_id: selectedBus.availability_id,
-            nomor_kursi: kursiTerpilihRef.current.nomor,
+            nomor_kursi: kursiTerkunciRef.current,
           })
           .catch(() => {})
       }
@@ -111,34 +143,22 @@ export default function DataPenumpang() {
     const nomorBaru = selected.map((seat) => seat.nomor)
 
     setSeatError(null)
-    try {
-      if (kursiTerpilih?.nomor?.length) {
+    if (kursiTerpilih?.nomor?.length) {
+      try {
         await api.unlockKursi({
           availability_id: selectedBus.availability_id,
           nomor_kursi: kursiTerpilih.nomor,
         })
-      }
-      await api.lockKursi({
-        availability_id: selectedBus.availability_id,
-        nomor_kursi: nomorBaru,
-      })
-      setKursiTerpilih({
-        seatIds: selected.map((seat) => seat.seat_id),
-        nomor: nomorBaru,
-      })
-      setModalOpen(false)
-    } catch (err) {
-      // Kemungkinan besar kursi barusan diambil orang lain -> muat ulang
-      // status kursi terbaru supaya modal langsung menunjukkan kursi mana
-      // yang sekarang tidak tersedia.
-      setSeatError(err.message || 'Kursi yang dipilih sudah tidak tersedia, silakan pilih kursi lain.')
-      try {
-        const data = await api.getKursi(selectedBus.availability_id)
-        setSeats(data)
-      } catch {
-        // abaikan, pesan error di atas sudah cukup untuk diketahui user
+      } catch (err) {
+        setSeatError(err.message || 'Kursi sebelumnya belum dapat dilepas, silakan coba lagi.')
+        return
       }
     }
+    setKursiTerpilih({
+      seatIds: selected.map((seat) => seat.seat_id),
+      nomor: nomorBaru,
+    })
+    setModalOpen(false)
   }
   const handleLanjutPembayaran = async () => {
     selectSeats(kursiTerpilih)
@@ -154,6 +174,11 @@ export default function DataPenumpang() {
     setBookingLoading(true)
 
     try {
+      await api.lockKursi({
+        availability_id: selectedBus.availability_id,
+        nomor_kursi: kursiTerpilih.nomor,
+      })
+      kursiTerkunciRef.current = kursiTerpilih.nomor
       const categories = [
         ...Array(booking.search.penumpang.dewasa).fill('adult'),
         ...Array(booking.search.penumpang.anak).fill('child'),
@@ -201,6 +226,15 @@ export default function DataPenumpang() {
       })
       navigate('/pemesanan/pembayaran')
     } catch (err) {
+      if (kursiTerkunciRef.current?.length && !bookingDibuatRef.current) {
+        await api
+          .unlockKursi({
+            availability_id: selectedBus.availability_id,
+            nomor_kursi: kursiTerkunciRef.current,
+          })
+          .catch(() => {})
+        kursiTerkunciRef.current = null
+      }
       console.error(err)
       setBookingError(err.message || t.penumpangPage.errorDefault)
     } finally {
