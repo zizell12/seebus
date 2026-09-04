@@ -202,9 +202,12 @@ export const api = {
     })
     return handleResponse(res)
   },
-  getAdminJadwal: async ({ tanggal, page } = {}) => {
+  getAdminJadwal: async ({ tanggal, routeId, busTypeId, status, page } = {}) => {
     const params = new URLSearchParams()
     if (tanggal) params.set('tanggal', tanggal)
+    if (routeId) params.set('route_id', routeId)
+    if (busTypeId) params.set('bus_type_id', busTypeId)
+    if (status) params.set('status', status)
     if (page) params.set('page', page)
     const res = await apiFetch(`${API_URL}/admin/jadwal?${params}`, {
       headers: {

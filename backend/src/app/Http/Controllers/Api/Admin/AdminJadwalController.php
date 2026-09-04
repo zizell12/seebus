@@ -21,6 +21,9 @@ class AdminJadwalController extends Controller
         $jadwal = Availability::query()
             ->with(['route.originStation.region', 'route.destinationStation.region', 'busType.company'])
             ->when($request->tanggal, fn ($q) => $q->where('av_date', $request->tanggal))
+            ->when($request->route_id, fn ($q) => $q->where('route_id', $request->route_id))
+            ->when($request->bus_type_id, fn ($q) => $q->where('bus_type_id', $request->bus_type_id))
+            ->when($request->status, fn ($q) => $q->where('av_status', $request->status))
             ->orderByDesc('av_date')
             ->orderBy('av_time')
             ->paginate(20);

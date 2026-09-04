@@ -20,11 +20,22 @@ class AdminBusTypeController extends Controller
     ];
 
 
-    private function satuSatunyaCompanyId(): int
+    /**
+     * Cari company_id dari input form (bisa pilih PO bus yang sudah ada
+     * lewat company_id, atau ketik nama PO baru lewat company_name --
+     * kalau namanya sudah ada, dipakai ulang; kalau belum, dibuatkan baru).
+     */
+    private function resolveCompanyId(array $data): int
     {
-        $company = Company::first();
+        if (! empty($data['company_id'])) {
+            return (int) $data['company_id'];
+        }
 
-        abort_if(! $company, 422, 'Data perusahaan belum ada. Isi dulu "Profil Perusahaan" sebelum menambah tipe bus.');
+        $nama = trim($data['company_name'] ?? '');
+        abort_if($nama === '', 422, 'Pilih PO bus atau ketik nama PO baru.');
+
+        $company = Company::whereRaw('LOWER(co_name) = ?', [mb_strtolower($nama)])->first()
+            ?? Company::create(['co_name' => $nama]);
 
         return $company->company_id;
     }
@@ -65,18 +76,22 @@ class AdminBusTypeController extends Controller
     public function options(): JsonResponse
     {
         return response()->json([
-            'company_name' => Company::first()?->co_name,
+            'companies' => Company::orderBy('co_name')->get(['company_id', 'co_name']),
             'fasilitas_umum' => self::FASILITAS_UMUM,
         ]);
     }
 
     /**
      * POST /api/admin/bus-type
-     * Tambah tipe bus baru (nama, kapasitas, perusahaan, dan fasilitasnya).
+     * Tambah tipe bus baru (nama, kapasitas, PO bus/perusahaan, dan fasilitasnya).
+     * PO bus bisa pilih yang sudah ada (company_id) atau ketik nama baru
+     * (company_name) -- kalau baru, PO tersebut otomatis dibuat.
      */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
+            'company_id' => 'nullable|integer|exists:company,company_id',
+            'company_name' => 'nullable|string|max:150',
             'bt_name' => 'required|string|max:100',
             'bt_capacity' => 'required|integer|min:1|max:100',
             'bt_facilities' => 'array',
@@ -84,7 +99,7 @@ class AdminBusTypeController extends Controller
         ]);
 
         $busType = BusType::create([
-            'company_id' => $this->satuSatunyaCompanyId(),
+            'company_id' => $this->resolveCompanyId($data),
             'bt_name' => $data['bt_name'],
             'bt_capacity' => $data['bt_capacity'],
             'bt_facilities' => implode(', ', $data['bt_facilities'] ?? []),
@@ -98,13 +113,15 @@ class AdminBusTypeController extends Controller
 
     /**
      * PUT /api/admin/bus-type/{id}
-     * Ubah data tipe bus & fasilitasnya.
+     * Ubah data tipe bus, fasilitasnya, dan (opsional) pindah ke PO bus lain.
      */
     public function update(Request $request, int $id): JsonResponse
     {
         $busType = BusType::findOrFail($id);
 
         $data = $request->validate([
+            'company_id' => 'nullable|integer|exists:company,company_id',
+            'company_name' => 'nullable|string|max:150',
             'bt_name' => 'required|string|max:100',
             'bt_capacity' => 'required|integer|min:1|max:100',
             'bt_facilities' => 'array',
@@ -112,6 +129,7 @@ class AdminBusTypeController extends Controller
         ]);
 
         $busType->update([
+            'company_id' => $this->resolveCompanyId($data),
             'bt_name' => $data['bt_name'],
             'bt_capacity' => $data['bt_capacity'],
             'bt_facilities' => implode(', ', $data['bt_facilities'] ?? []),
