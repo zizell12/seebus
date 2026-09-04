@@ -162,16 +162,6 @@ export const api = {
     })
     return handleResponse(res)
   },
-  capturePaypalOrder: async ({ booking_id, orderID }) => {
-    const res = await apiFetch(`${API_URL}/paypal/capture-order`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ booking_id, orderID }),
-    })
-    return handleResponse(res)
-  },
   getAdminPesan: async ({ status, cari, page } = {}) => {
     const params = new URLSearchParams()
     if (status) params.set('status', status)

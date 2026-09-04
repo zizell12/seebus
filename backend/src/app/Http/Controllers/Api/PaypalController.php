@@ -34,6 +34,11 @@ class PaypalController extends Controller
         $response = Http::withBasicAuth($clientId, $secret)
             ->post("{$paypalUrl}/v2/checkout/orders", [
                 'intent' => 'CAPTURE',
+                'application_context' => [
+                    'return_url' => $this->callbackUrl($booking, 'success'),
+                    'cancel_url' => $this->callbackUrl($booking, 'cancel'),
+                    'user_action' => 'PAY_NOW',
+                ],
                 'purchase_units' => [
                     [
                         'amount' => [
@@ -63,7 +68,61 @@ class PaypalController extends Controller
             $booking->update(['bk_paypal_order_id' => $orderData['id']]);
         }
 
-        return Response::json(['data' => $orderData]);
+        $approveUrl = collect($orderData['links'] ?? [])
+            ->firstWhere('rel', 'approve')['href'] ?? null;
+
+        if (! $approveUrl) {
+            Log::error('PayPal create order tidak mengembalikan URL approval.', [
+                'booking_id' => $booking->booking_id,
+                'order_id' => $orderData['id'] ?? null,
+            ]);
+
+            return Response::json(['message' => 'URL pembayaran PayPal tidak tersedia.'], 500);
+        }
+
+        return Response::json(['data' => ['redirect_url' => $approveUrl]]);
+    }
+
+    public function callback(Request $request)
+    {
+        $orderId = $request->query('token');
+        $booking = $orderId ? Booking::where('bk_paypal_order_id', $orderId)->first() : null;
+
+        if (! $booking) {
+            return redirect()->to($this->frontendUrl('/pemesanan/berhasil', [
+                'status' => 'failed',
+            ]));
+        }
+
+        if ($request->query('status') === 'cancel') {
+            return redirect()->to($this->frontendUrl('/pemesanan/berhasil', [
+                'status' => 'cancelled',
+                'booking_id' => $booking->booking_id,
+                'booking_code' => $booking->bk_code,
+            ]));
+        }
+
+        try {
+            $this->captureBooking($booking, $orderId);
+
+            return redirect()->to($this->frontendUrl('/pemesanan/berhasil', [
+                'status' => 'success',
+                'booking_id' => $booking->booking_id,
+                'booking_code' => $booking->bk_code,
+            ]));
+        } catch (\Throwable $e) {
+            Log::error('Callback PayPal gagal memverifikasi pembayaran.', [
+                'booking_id' => $booking->booking_id,
+                'order_id' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->to($this->frontendUrl('/pemesanan/berhasil', [
+                'status' => 'failed',
+                'booking_id' => $booking->booking_id,
+                'booking_code' => $booking->bk_code,
+            ]));
+        }
     }
 
     public function captureOrder(Request $request): JsonResponse
@@ -97,34 +156,39 @@ class PaypalController extends Controller
             ], 403);
         }
 
-        $paypalUrl = config('services.paypal.base_url');
-        $clientId = config('services.paypal.client_id');
-        $secret = config('services.paypal.secret');
+        $captureData = $this->captureBooking($booking, $data['orderID']);
 
-        $response = Http::withBasicAuth($clientId, $secret)
+        return response()->json([
+            'message' => 'Pembayaran berhasil.',
+            'data' => $captureData,
+        ]);
+    }
+
+    private function captureBooking(Booking $booking, string $orderId): array
+    {
+        if ($booking->bk_status === 'paid') {
+            return ['status' => 'COMPLETED'];
+        }
+
+        if ($booking->bk_status !== 'pending') {
+            throw new \RuntimeException('Booking harus pending sebelum capture pembayaran.');
+        }
+
+        $paypalUrl = config('services.paypal.base_url');
+        $response = Http::withBasicAuth(config('services.paypal.client_id'), config('services.paypal.secret'))
             ->withBody('{}', 'application/json')
-            ->post("{$paypalUrl}/v2/checkout/orders/{$data['orderID']}/capture");
+            ->post("{$paypalUrl}/v2/checkout/orders/{$orderId}/capture");
 
         if (! $response->successful()) {
-            Log::error('PayPal capture gagal', [
-                'status' => $response->status(),
-                'body' => $response->json(),
-            ]);
-            return Response::json(['message' => 'Verifikasi PayPal gagal.', 'detail' => $response->json()], 500);
+            throw new \RuntimeException('PayPal capture gagal: '.$response->body());
         }
 
         $captureData = $response->json();
-        if ($captureData['status'] !== 'COMPLETED') {
-            return response()->json(['message' => 'Pembayaran belum selesai.'], 422);
+        if (($captureData['status'] ?? null) !== 'COMPLETED') {
+            throw new \RuntimeException('Pembayaran belum selesai.');
         }
 
-        $booking->update([
-            'bk_status' => 'paid',
-        ]);
-
-        // Kursi yang tadinya cuma 'locked' sementara (15 menit) sekarang dikunci
-        // permanen sebagai 'booked', supaya tidak bisa dipesan orang lain lagi
-        // walaupun proses pembayaran ini memakan waktu lebih dari masa lock awal.
+        $booking->update(['bk_status' => 'paid']);
         $seatIds = $booking->passengers()->pluck('seat_id');
         Seat::whereIn('seat_id', $seatIds)->update([
             'seat_status' => 'booked',
@@ -134,7 +198,6 @@ class PaypalController extends Controller
 
         $booking->load('contact');
         $recipientEmail = $booking->contact?->ct_email;
-
         if ($recipientEmail) {
             try {
                 Mail::to($recipientEmail)->send(new TicketMail($booking));
@@ -145,15 +208,23 @@ class PaypalController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
-        } else {
-            Log::warning('Booking tidak memiliki email kontak, e-tiket tidak dikirim.', [
-                'booking_id' => $booking->booking_id,
-            ]);
         }
 
-        return response()->json([
-            'message' => 'Pembayaran berhasil.',
-            'data' => $captureData,
+        return $captureData;
+    }
+
+    private function callbackUrl(Booking $booking, string $status): string
+    {
+        return url('/api/paypal/callback').'?'.http_build_query([
+            'booking_id' => $booking->booking_id,
+            'booking_code' => $booking->bk_code,
+            'status' => $status,
         ]);
+    }
+
+    private function frontendUrl(string $path, array $query = []): string
+    {
+        $url = rtrim(config('services.frontend.url'), '/').$path;
+        return $query ? $url.'?'.http_build_query($query) : $url;
     }
 }

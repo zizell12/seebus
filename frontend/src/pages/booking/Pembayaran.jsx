@@ -1,23 +1,20 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
 import { MapPin } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
 import BookingSummaryBar from '../../components/BookingSummaryBar'
 import { useBooking } from '../../context/BookingContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../utils/api'
-import { clearPendingBooking } from '../../utils/pendingBooking'
 import backgrounddb from '../../assets/background-db.png'
 export default function Pembayaran() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
-  const { booking, setPayment } = useBooking()
+  const { booking } = useBooking()
   const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id, booking_code, harga } = booking
   const totalHarga = harga?.total ?? 0
   const hargaPublish = harga?.publish ?? 0
   const biayaLayanan = harga?.biayaLayanan ?? 0
-  const totalUsd = (totalHarga / 15000).toFixed(2)
   if (!selectedBus || !passengers.length || !booking_id) {
     navigate('/pencarian')
     return null
@@ -96,47 +93,16 @@ export default function Pembayaran() {
             <span>Rp {totalHarga.toLocaleString('id-ID')}</span>
           </div>
 
-          <PayPalScriptProvider
-            options={{
-                'client-id': 'AXda5MhdP4vFOYtmRpevlQiJXwSb-sHYX8wuUKCwMMw7-5qENUr5T1Cd9jdY8YBhwG45E5AwEXepLAnS', // sama seperti PAYPAL_CLIENT_ID di backend
-                currency: 'USD',
-              }}
+          <button
+            type="button"
+            className="w-full bg-[#0070ba] text-white rounded-lg px-4 py-3 font-semibold hover:bg-[#005ea6]"
+            onClick={async () => {
+              const response = await api.createPaypalOrder({ booking_id })
+              window.location.assign(response.data.redirect_url)
+            }}
           >
-            <PayPalButtons
-              style={{
-                layout: 'vertical',
-                color: 'blue',
-                label: 'paypal',
-              }}
-              createOrder={async () => {
-                const response = await api.createPaypalOrder({ booking_id })
-                return response.data.id || response.data.orderID || response.data?.id
-              }}
-              onApprove={async (data) => {
-                try {
-                  await api.capturePaypalOrder({ booking_id, orderID: data.orderID })
-                  clearPendingBooking()
-                  setPayment({
-                    metode: 'paypal',
-                    status: 'success',
-                  })
-                  navigate('/pemesanan/berhasil')
-                } catch (error) {
-                  console.error(error)
-                  setPayment({
-                    metode: 'paypal',
-                    status: 'failed',
-                  })
-                }
-              }}
-              onError={() => {
-                setPayment({
-                  metode: 'paypal',
-                  status: 'failed',
-                })
-              }}
-            />
-          </PayPalScriptProvider>
+            Bayar dengan PayPal
+          </button>
         </div>
       </div>
     </div>

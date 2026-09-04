@@ -62,6 +62,8 @@ Route::post('/booking', [BookingController::class, 'store'])
 
 Route::post('/paypal/create-order', [PaypalController::class, 'createOrder'])
     ->middleware('throttle:10,1');
+Route::get('/paypal/callback', [PaypalController::class, 'callback'])
+    ->middleware('throttle:20,1');
 Route::post('/paypal/capture-order', [PaypalController::class, 'captureOrder'])
     ->middleware('throttle:10,1');
 
