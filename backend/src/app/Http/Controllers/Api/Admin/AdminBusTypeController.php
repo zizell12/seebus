@@ -11,16 +11,6 @@ use Illuminate\Http\Request;
 class AdminBusTypeController extends Controller
 {
     /**
-     * Daftar fasilitas umum yang sering dipakai, ditampilkan sebagai pilihan
-     * cepat di form (admin tetap bisa menambah fasilitas custom lain).
-     */
-    private const FASILITAS_UMUM = [
-        'ac', 'wifi', 'snack', 'Reclining Seat', 'Toilet', 'Bantal & Selimut',
-        'Kursi Standar 2-3', 'Kasur Individu', 'USB Charger', 'Legrest', 'Selimut',
-    ];
-
-
-    /**
      * Cari company_id dari input form (bisa pilih PO bus yang sudah ada
      * lewat company_id, atau ketik nama PO baru lewat company_name --
      * kalau namanya sudah ada, dipakai ulang; kalau belum, dibuatkan baru).
@@ -42,12 +32,15 @@ class AdminBusTypeController extends Controller
 
     /**
      * GET /api/admin/bus-type
-     * List semua tipe bus untuk ditampilkan di tabel panel admin.
+     * List semua KELAS bus (Ekonomi/Eksekutif/Sleeper, dst) untuk tabel
+     * panel admin. Fasilitas & kapasitas fisik sekarang ada di level armada
+     * (bus_unit), bukan di sini lagi -- lihat AdminBusUnitController.
      */
     public function index(Request $request): JsonResponse
     {
         $busTypes = BusType::query()
             ->with('company')
+            ->withCount('busUnits')
             ->when($request->cari, function ($q) use ($request) {
                 $kata = $request->cari;
                 $q->where(function ($sub) use ($kata) {
@@ -63,29 +56,24 @@ class AdminBusTypeController extends Controller
             'company_id' => $bt->company_id,
             'company_name' => $bt->company->co_name,
             'bt_name' => $bt->bt_name,
-            'bt_capacity' => $bt->bt_capacity,
-            'bt_facilities' => $bt->bt_facilities
-                ? array_values(array_filter(array_map('trim', explode(',', $bt->bt_facilities))))
-                : [],
+            'jumlah_armada' => $bt->bus_units_count,
         ]);
 
         return response()->json($busTypes);
     }
 
-    
     public function options(): JsonResponse
     {
         return response()->json([
             'companies' => Company::orderBy('co_name')->get(['company_id', 'co_name']),
-            'fasilitas_umum' => self::FASILITAS_UMUM,
         ]);
     }
 
     /**
      * POST /api/admin/bus-type
-     * Tambah tipe bus baru (nama, kapasitas, PO bus/perusahaan, dan fasilitasnya).
-     * PO bus bisa pilih yang sudah ada (company_id) atau ketik nama baru
-     * (company_name) -- kalau baru, PO tersebut otomatis dibuat.
+     * Tambah kelas bus baru (nama & PO bus). PO bus bisa pilih yang sudah
+     * ada (company_id) atau ketik nama baru (company_name) -- kalau baru,
+     * PO tersebut otomatis dibuat.
      */
     public function store(Request $request): JsonResponse
     {
@@ -93,27 +81,22 @@ class AdminBusTypeController extends Controller
             'company_id' => 'nullable|integer|exists:company,company_id',
             'company_name' => 'nullable|string|max:150',
             'bt_name' => 'required|string|max:100',
-            'bt_capacity' => 'required|integer|min:1|max:100',
-            'bt_facilities' => 'array',
-            'bt_facilities.*' => 'string|max:100',
         ]);
 
         $busType = BusType::create([
             'company_id' => $this->resolveCompanyId($data),
             'bt_name' => $data['bt_name'],
-            'bt_capacity' => $data['bt_capacity'],
-            'bt_facilities' => implode(', ', $data['bt_facilities'] ?? []),
         ]);
 
         return response()->json([
-            'message' => 'Tipe bus baru berhasil ditambahkan.',
+            'message' => 'Kelas bus baru berhasil ditambahkan.',
             'data' => $busType->load('company'),
         ], 201);
     }
 
     /**
      * PUT /api/admin/bus-type/{id}
-     * Ubah data tipe bus, fasilitasnya, dan (opsional) pindah ke PO bus lain.
+     * Ubah nama kelas bus, atau pindah ke PO bus lain.
      */
     public function update(Request $request, int $id): JsonResponse
     {
@@ -123,43 +106,38 @@ class AdminBusTypeController extends Controller
             'company_id' => 'nullable|integer|exists:company,company_id',
             'company_name' => 'nullable|string|max:150',
             'bt_name' => 'required|string|max:100',
-            'bt_capacity' => 'required|integer|min:1|max:100',
-            'bt_facilities' => 'array',
-            'bt_facilities.*' => 'string|max:100',
         ]);
 
         $busType->update([
             'company_id' => $this->resolveCompanyId($data),
             'bt_name' => $data['bt_name'],
-            'bt_capacity' => $data['bt_capacity'],
-            'bt_facilities' => implode(', ', $data['bt_facilities'] ?? []),
         ]);
 
         return response()->json([
-            'message' => 'Tipe bus berhasil diperbarui.',
+            'message' => 'Kelas bus berhasil diperbarui.',
             'data' => $busType->load('company'),
         ]);
     }
 
     /**
      * DELETE /api/admin/bus-type/{id}
-     * Hapus tipe bus. Ditolak kalau tipe bus ini masih dipakai di salah satu
-     * jadwal, supaya riwayat jadwal & booking lama tidak rusak.
+     * Hapus kelas bus. Ditolak kalau masih ada armada (bus_unit) yang
+     * memakai kelas ini -- hapus/pindahkan armadanya dulu di menu Armada.
      */
     public function destroy(int $id): JsonResponse
     {
         $busType = BusType::findOrFail($id);
 
-        if ($busType->availabilities()->exists()) {
+        if ($busType->busUnits()->exists()) {
             return response()->json([
-                'message' => 'Tipe bus ini masih dipakai di salah satu jadwal, tidak bisa dihapus.',
+                'message' => 'Kelas bus ini masih punya armada terdaftar. Hapus atau pindahkan armadanya dulu di menu Armada.',
             ], 422);
         }
 
         $busType->delete();
 
         return response()->json([
-            'message' => 'Tipe bus berhasil dihapus.',
+            'message' => 'Kelas bus berhasil dihapus.',
         ]);
     }
 }

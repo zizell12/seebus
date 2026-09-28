@@ -20,10 +20,11 @@ class TicketMail extends Mailable implements ShouldQueue
     {
         $this->booking = $booking->loadMissing([
             'contact',
-            'passengers.seat',
+            'passengers.fromStop.station',
+            'passengers.toStop.station',
             'availability.route.originStation',
             'availability.route.destinationStation',
-            'availability.busType.company',
+            'availability.busUnit.busType.company',
         ]);
     }
 

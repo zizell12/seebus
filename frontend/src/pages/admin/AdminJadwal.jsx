@@ -140,9 +140,9 @@ export default function AdminJadwal() {
   const [error, setError] = useState('')
   const [tanggal, setTanggal] = useState('')
   const [routeId, setRouteId] = useState('')
-  const [busTypeId, setBusTypeId] = useState('')
+  const [busUnitId, setBusUnitId] = useState('')
   const [status, setStatus] = useState('')
-  const [options, setOptions] = useState({ routes: [], bus_types: [] })
+  const [options, setOptions] = useState({ routes: [], bus_units: [] })
   const [page, setPage] = useState(1)
   const [filterOpen, setFilterOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
@@ -159,7 +159,7 @@ export default function AdminJadwal() {
       const res = await api.getAdminJadwal({
         tanggal: tanggal || undefined,
         routeId: routeId || undefined,
-        busTypeId: busTypeId || undefined,
+        busUnitId: busUnitId || undefined,
         status: status || undefined,
         page,
       })
@@ -169,14 +169,14 @@ export default function AdminJadwal() {
     } finally {
       setLoading(false)
     }
-  }, [tanggal, routeId, busTypeId, status, page])
+  }, [tanggal, routeId, busUnitId, status, page])
 
   useEffect(() => {
     muatJadwal()
   }, [muatJadwal])
 
-  const adaFilterAktif = tanggal || routeId || busTypeId || status
-  const jumlahFilterAktif = [tanggal, routeId, busTypeId, status].filter(Boolean).length
+  const adaFilterAktif = tanggal || routeId || busUnitId || status
+  const jumlahFilterAktif = [tanggal, routeId, busUnitId, status].filter(Boolean).length
 
   const resetFilter = () => {
     setTanggal('')
@@ -278,16 +278,16 @@ export default function AdminJadwal() {
 
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                {t.adminJadwalPage.filterTipeBus}
+                Armada
               </label>
               <SearchCombo
-                value={busTypeId}
+                value={busUnitId}
                 onChange={(v) => {
-                  setBusTypeId(v)
+                  setBusUnitId(v)
                   setPage(1)
                 }}
-                options={options.bus_types.map((bt) => ({ value: bt.bus_type_id, label: bt.label }))}
-                placeholder={t.adminJadwalPage.semuaTipeBus}
+                options={options.bus_units.map((bu) => ({ value: bu.bus_unit_id, label: bu.label }))}
+                placeholder="Semua armada"
                 emptyText={t.adminJadwalPage.tidakAdaHasil}
               />
             </div>

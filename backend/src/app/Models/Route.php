@@ -26,4 +26,14 @@ class Route extends Model
     {
         return $this->hasMany(Availability::class, 'route_id', 'route_id');
     }
+
+    public function stops()
+    {
+        return $this->hasMany(RouteStop::class, 'route_id', 'route_id')->orderBy('stop_order');
+    }
+
+    public function scheduleTemplates()
+    {
+        return $this->hasMany(ScheduleTemplate::class, 'route_id', 'route_id');
+    }
 }

@@ -11,7 +11,7 @@ export default function Pembayaran() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
   const { booking } = useBooking()
-  const { selectedBus, selectedSeats, passengers, search, contact, notes, booking_id, booking_code, harga } = booking
+  const { selectedBus, selectedStops, passengers, search, contact, notes, booking_id, booking_code, harga } = booking
   const totalHarga = harga?.total ?? 0
   const hargaPublish = harga?.publish ?? 0
   const biayaLayanan = harga?.biayaLayanan ?? 0
@@ -75,7 +75,7 @@ export default function Pembayaran() {
 
           <div className="text-sm text-navy-900 mb-4 pb-4 border-b border-gray-100">
             <p className="font-medium">
-              {t.penumpangPage.kursiLabel} {selectedSeats.nomor.join(', ')} ({selectedBus.kelas})
+              {selectedStops?.fromName} → {selectedStops?.toName} ({selectedBus.kelas})
             </p>
             <p className="text-xs text-gray-400">{passengers.length} {t.pembayaranPage.penumpang}</p>
           </div>

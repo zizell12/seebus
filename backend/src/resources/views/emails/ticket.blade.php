@@ -92,10 +92,10 @@
                                                 <td width="34%" style="vertical-align:top;">
                                                     <p style="margin:0 0 3px 0; font-size:10.5px; color:#8a93a6; text-transform:uppercase;">Armada</p>
                                                     <p style="margin:0; font-size:13.5px; font-weight:700; color:#0F2A66;">
-                                                        {{ $booking->availability?->busType?->company?->co_name ?? '-' }}
+                                                        {{ $booking->availability?->busUnit?->busType?->company?->co_name ?? '-' }}
                                                     </p>
                                                     <p style="margin:2px 0 0 0; font-size:11.5px; color:#6b7280;">
-                                                        {{ $booking->availability?->busType?->bt_name ?? '-' }}
+                                                        {{ $booking->availability?->busUnit?->busType?->bt_name ?? '-' }}
                                                     </p>
                                                 </td>
                                             </tr>
@@ -113,16 +113,14 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; font-size:13px;">
                                 <tr>
                                     <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; border-radius:6px 0 0 0;">NAMA</td>
-                                    <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; text-align:center;">KURSI</td>
+                                    <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; text-align:center;">NAIK - TURUN</td>
                                     <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; text-align:center; border-radius:0 6px 0 0;">KATEGORI</td>
                                 </tr>
                                 @foreach ($booking->passengers as $index => $passenger)
                                     <tr style="background-color:{{ $index % 2 === 0 ? '#ffffff' : '#f7f9fc' }};">
                                         <td style="padding:10px; border-bottom:1px solid #edf0f5; font-weight:600;">{{ $passenger->ps_name }}</td>
-                                        <td style="padding:10px; border-bottom:1px solid #edf0f5; text-align:center;">
-                                            <span style="display:inline-block; background-color:#e8ecf5; color:#0F2A66; font-weight:700; font-size:12px; padding:2px 10px; border-radius:6px;">
-                                                {{ $passenger->seat?->seat_number ?? '-' }}
-                                            </span>
+                                        <td style="padding:10px; border-bottom:1px solid #edf0f5; text-align:center; font-size:12px; color:#0F2A66; font-weight:600;">
+                                            {{ $passenger->fromStop?->station?->stn_name ?? '-' }} &rarr; {{ $passenger->toStop?->station?->stn_name ?? '-' }}
                                         </td>
                                         <td style="padding:10px; border-bottom:1px solid #edf0f5; text-align:center; text-transform:capitalize; color:#4b5563;">{{ $passenger->ps_category }}</td>
                                     </tr>

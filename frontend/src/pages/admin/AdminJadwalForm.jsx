@@ -12,13 +12,11 @@ export default function AdminJadwalForm() {
   const isEdit = Boolean(id)
   const initial = isEdit ? location.state?.item || null : null
 
-  const [options, setOptions] = useState({ routes: [], bus_types: [] })
+  const [options, setOptions] = useState({ routes: [], bus_units: [] })
   const [routeId, setRouteId] = useState(initial?.route_id || '')
-  const [busTypeId, setBusTypeId] = useState(initial?.bus_type_id || '')
+  const [busUnitId, setBusUnitId] = useState(initial?.bus_unit_id || '')
   const [tanggal, setTanggal] = useState(initial?.av_date || '')
   const [jam, setJam] = useState(initial?.av_time || '')
-  const [hargaDewasa, setHargaDewasa] = useState(initial?.av_price?.adult ?? '')
-  const [hargaAnak, setHargaAnak] = useState(initial?.av_price?.child ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -43,24 +41,25 @@ export default function AdminJadwalForm() {
     )
   }
 
+  const rutePilihanBelumSiap = !isEdit && routeId && options.routes.find((r) => String(r.route_id) === String(routeId))?.siap_dipakai === false
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
     setError('')
     try {
       if (isEdit) {
-        await api.ubahJadwal(initial.availability_id, {
-          av_time: jam,
-          av_price: { adult: Number(hargaDewasa), child: Number(hargaAnak) },
-        })
+        // Backend hanya menerima perubahan jam/status di sini -- harga dan
+        // rute/armada jadwal yang sudah dibuat tidak bisa diedit lagi,
+        // supaya tidak mengubah booking yang sudah terlanjur ada.
+        await api.ubahJadwal(initial.availability_id, { av_time: jam })
         navigate('/admin/jadwal', { state: { notice: t.adminJadwalPage.berhasilUbah } })
       } else {
         await api.tambahJadwal({
           route_id: routeId,
-          bus_type_id: busTypeId,
+          bus_unit_id: busUnitId,
           av_date: tanggal,
           av_time: jam,
-          av_price: { adult: Number(hargaDewasa), child: Number(hargaAnak) },
         })
         navigate('/admin/jadwal', { state: { notice: t.adminJadwalPage.berhasilTambah } })
       }
@@ -94,6 +93,13 @@ export default function AdminJadwalForm() {
         </div>
       )}
 
+      {rutePilihanBelumSiap && (
+        <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-5">
+          Rute ini belum punya titik pemberhentian (minimal titik awal & akhir), jadi harga belum bisa dihitung. Isi
+          dulu di menu Rute → Titik Pemberhentian sebelum bikin jadwal untuk rute ini.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <form onSubmit={handleSubmit} className="card space-y-4 lg:col-span-2">
           {!isEdit && (
@@ -109,6 +115,7 @@ export default function AdminJadwalForm() {
                 {options.routes.map((r) => (
                   <option key={r.route_id} value={r.route_id}>
                     {r.label}
+                    {r.siap_dipakai === false ? ' (belum ada titik pemberhentian)' : ''}
                   </option>
                 ))}
               </select>
@@ -117,20 +124,29 @@ export default function AdminJadwalForm() {
 
           {!isEdit && (
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelTipeBus}</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Armada</label>
               <select
                 required
-                value={busTypeId}
-                onChange={(e) => setBusTypeId(e.target.value)}
+                value={busUnitId}
+                onChange={(e) => setBusUnitId(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
               >
-                <option value="">{t.adminJadwalPage.pilihTipeBus}</option>
-                {options.bus_types.map((bt) => (
-                  <option key={bt.bus_type_id} value={bt.bus_type_id}>
-                    {bt.label}
+                <option value="">Pilih armada</option>
+                {options.bus_units.map((bu) => (
+                  <option key={bu.bus_unit_id} value={bu.bus_unit_id}>
+                    {bu.label}
                   </option>
                 ))}
               </select>
+              {options.bus_units.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Belum ada armada aktif. Tambah dulu di menu{' '}
+                  <Link to="/admin/armada/tambah" className="font-semibold text-navy-900 underline">
+                    Armada
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
           )}
 
@@ -159,30 +175,9 @@ export default function AdminJadwalForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelHargaDewasa}</label>
-              <input
-                required
-                type="number"
-                min="0"
-                value={hargaDewasa}
-                onChange={(e) => setHargaDewasa(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelHargaAnak}</label>
-              <input
-                required
-                type="number"
-                min="0"
-                value={hargaAnak}
-                onChange={(e) => setHargaAnak(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
-          </div>
+          <p className="text-xs text-gray-400">
+            Harga tidak diisi di sini -- otomatis dihitung dari harga titik pemberhentian rute yang dipilih.
+          </p>
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
@@ -230,21 +225,11 @@ export default function AdminJadwalForm() {
             <p className="text-navy-900 text-sm mt-3">
               {(isEdit ? initial.av_date : tanggal) || '-'} {jam && `· ${jam}`}
             </p>
-            <p className="text-xs text-gray-400 mb-3">
+            <p className="text-xs text-gray-400">
               {isEdit
-                ? initial.bt_name
-                : options.bus_types.find((bt) => String(bt.bus_type_id) === String(busTypeId))?.label ||
-                  t.adminJadwalPage.pilihTipeBus}
+                ? `${initial.operator} - ${initial.bt_name} (${initial.bu_code})`
+                : options.bus_units.find((bu) => String(bu.bus_unit_id) === String(busUnitId))?.label || 'Pilih armada'}
             </p>
-
-            <div className="pt-3 border-t border-gray-100 text-sm">
-              <p className="text-navy-900">
-                Rp {Number(hargaDewasa || 0).toLocaleString('id-ID')}
-              </p>
-              <p className="text-xs text-gray-400">
-                Rp {Number(hargaAnak || 0).toLocaleString('id-ID')} ({t.adminJadwalPage.labelHargaAnak.split(' ')[0]})
-              </p>
-            </div>
           </div>
           <p className="text-xs text-gray-400 mt-2.5">{t.adminJadwalPage.previewKeterangan}</p>
         </div>

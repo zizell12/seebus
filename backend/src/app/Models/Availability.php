@@ -11,12 +11,12 @@ class Availability extends Model
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'route_id', 'bus_type_id', 'av_date', 'av_time',
+        'route_id', 'bus_unit_id', 'av_date', 'av_time',
         'av_price', 'av_status', 'av_seats',
     ];
 
     protected $casts = [
-        'av_price' => 'array', // contoh isi: {"adult":150000,"child":100000}
+        'av_price' => 'array', // cache harga "mulai dari" (rute penuh) buat tampilan hasil pencarian
         'av_date' => 'date',
     ];
 
@@ -25,14 +25,14 @@ class Availability extends Model
         return $this->belongsTo(Route::class, 'route_id', 'route_id');
     }
 
-    public function busType()
+    public function busUnit()
     {
-        return $this->belongsTo(BusType::class, 'bus_type_id', 'bus_type_id');
+        return $this->belongsTo(BusUnit::class, 'bus_unit_id', 'bus_unit_id');
     }
 
-    public function seats()
+    public function legs()
     {
-        return $this->hasMany(Seat::class, 'availability_id', 'availability_id');
+        return $this->hasMany(AvailabilityLeg::class, 'availability_id', 'availability_id');
     }
 
     public function bookings()

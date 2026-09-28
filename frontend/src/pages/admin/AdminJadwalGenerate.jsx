@@ -18,15 +18,13 @@ export default function AdminJadwalGenerate() {
   const { t } = useLanguage()
   const navigate = useNavigate()
 
-  const [options, setOptions] = useState({ routes: [], bus_types: [] })
+  const [options, setOptions] = useState({ routes: [], bus_units: [] })
   const [routeId, setRouteId] = useState('')
-  const [busTypeId, setBusTypeId] = useState('')
+  const [busUnitId, setBusUnitId] = useState('')
   const [tanggalMulai, setTanggalMulai] = useState('')
   const [tanggalSelesai, setTanggalSelesai] = useState('')
   const [hariTerpilih, setHariTerpilih] = useState([1, 2, 3, 4, 5, 6, 0])
   const [jamList, setJamList] = useState([''])
-  const [hargaDewasa, setHargaDewasa] = useState('')
-  const [hargaAnak, setHargaAnak] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,12 +64,11 @@ export default function AdminJadwalGenerate() {
     try {
       const res = await api.generateJadwal({
         route_id: routeId,
-        bus_type_id: busTypeId,
+        bus_unit_id: busUnitId,
         tanggal_mulai: tanggalMulai,
         tanggal_selesai: tanggalSelesai,
         hari: hariTerpilih,
         jam: jamValid,
-        av_price: { adult: Number(hargaDewasa), child: Number(hargaAnak) },
       })
       navigate('/admin/jadwal', {
         state: { notice: t.adminJadwalPage.generateBerhasil.replace('{dibuat}', res.dibuat ?? 0) },
@@ -123,17 +120,17 @@ export default function AdminJadwalGenerate() {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelTipeBus}</label>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">Armada</label>
           <select
             required
-            value={busTypeId}
-            onChange={(e) => setBusTypeId(e.target.value)}
+            value={busUnitId}
+            onChange={(e) => setBusUnitId(e.target.value)}
             className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
           >
-            <option value="">{t.adminJadwalPage.pilihTipeBus}</option>
-            {options.bus_types.map((bt) => (
-              <option key={bt.bus_type_id} value={bt.bus_type_id}>
-                {bt.label}
+            <option value="">Pilih armada</option>
+            {options.bus_units.map((bu) => (
+              <option key={bu.bus_unit_id} value={bu.bus_unit_id}>
+                {bu.label}
               </option>
             ))}
           </select>
@@ -217,30 +214,9 @@ export default function AdminJadwalGenerate() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelHargaDewasa}</label>
-            <input
-              required
-              type="number"
-              min="0"
-              value={hargaDewasa}
-              onChange={(e) => setHargaDewasa(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelHargaAnak}</label>
-            <input
-              required
-              type="number"
-              min="0"
-              value={hargaAnak}
-              onChange={(e) => setHargaAnak(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-            />
-          </div>
-        </div>
+        <p className="text-xs text-gray-400">
+          Harga tidak diisi di sini -- otomatis dihitung dari harga titik pemberhentian rute yang dipilih.
+        </p>
 
         <div className="flex items-center justify-end gap-2 pt-2">
           <button

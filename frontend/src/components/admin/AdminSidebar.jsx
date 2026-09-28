@@ -1,6 +1,6 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { Inbox, CalendarClock, BusFront, X, Route as RouteIcon, MapPin } from 'lucide-react'
+import { Inbox, CalendarClock, BusFront, Bus, X, Route as RouteIcon, MapPin, BarChart3 } from 'lucide-react'
 import { useLanguage } from '../../context/LanguageContext'
 
 const MENU_GROUPS = [
@@ -8,8 +8,10 @@ const MENU_GROUPS = [
     key: 'operasional',
     items: [
       { to: '/admin', end: true, icon: Inbox, labelKey: 'menuPesan' },
+      { to: '/admin/rekap', end: false, icon: BarChart3, labelKey: 'menuRekap' },
       { to: '/admin/jadwal', end: false, icon: CalendarClock, labelKey: 'menuJadwal' },
       { to: '/admin/tipe-bus', end: false, icon: BusFront, labelKey: 'menuTipeBus' },
+      { to: '/admin/armada', end: false, icon: Bus, labelKey: 'menuArmada' },
       { to: '/admin/rute', end: false, icon: RouteIcon, labelKey: 'menuRute' },
       { to: '/admin/terminal', end: false, icon: MapPin, labelKey: 'menuTerminal' },
     ],

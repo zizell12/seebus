@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Pencil, Trash2, RefreshCcw, ChevronLeft, ChevronRight, Search, Bus, Building2 } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Plus, Pencil, Trash2, RefreshCcw, ChevronLeft, ChevronRight, Search, Bus, Power, Building2 } from 'lucide-react'
 import { api } from '../../utils/api'
-import { useLanguage } from '../../context/LanguageContext'
 
-export default function AdminTipeBus() {
-  const { t } = useLanguage()
+export default function AdminArmada() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const busTypeIdFilter = searchParams.get('bus_type_id') || ''
+
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -21,14 +22,14 @@ export default function AdminTipeBus() {
     setLoading(true)
     setError('')
     try {
-      const res = await api.getAdminBusType({ cari: cariAktif || undefined, page })
+      const res = await api.getAdminBusUnit({ cari: cariAktif || undefined, page, busTypeId: busTypeIdFilter || undefined })
       setData(res)
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [cariAktif, page])
+  }, [cariAktif, page, busTypeIdFilter])
 
   useEffect(() => {
     muatData()
@@ -36,7 +37,7 @@ export default function AdminTipeBus() {
 
   useEffect(() => {
     if (location.state?.notice) {
-      navigate(location.pathname, { replace: true, state: {} })
+      navigate(location.pathname + location.search, { replace: true, state: {} })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -48,12 +49,26 @@ export default function AdminTipeBus() {
   }
 
   const handleHapus = async (item) => {
-    if (!window.confirm(t.adminTipeBusPage.konfirmasiHapus)) return
-    setActionLoading(item.bus_type_id)
+    if (!window.confirm(`Hapus armada "${item.bu_code}"?`)) return
+    setActionLoading(item.bus_unit_id)
     setError('')
     try {
-      await api.hapusBusType(item.bus_type_id)
-      setNotice(t.adminTipeBusPage.berhasilHapus)
+      await api.hapusBusUnit(item.bus_unit_id)
+      setNotice('Armada berhasil dihapus.')
+      await muatData()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleToggleStatus = async (item) => {
+    setActionLoading(item.bus_unit_id)
+    setError('')
+    try {
+      const res = await api.toggleBusUnitStatus(item.bus_unit_id)
+      setNotice(res.message)
       await muatData()
     } catch (err) {
       setError(err.message)
@@ -70,14 +85,14 @@ export default function AdminTipeBus() {
     <div className="max-w-6xl mx-auto px-4 md:px-6 py-10">
       <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-navy-900">{t.adminTipeBusPage.judul}</h1>
-          <p className="text-sm text-gray-500 mt-1">{t.adminTipeBusPage.subJudul}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-navy-900">Kelola Armada</h1>
+          <p className="text-sm text-gray-500 mt-1">Atur unit bus fisik, plat nomor, kapasitas, dan fasilitasnya.</p>
         </div>
         <Link
-          to="/admin/tipe-bus/tambah"
+          to="/admin/armada/tambah"
           className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-brand-red px-4 py-2.5 rounded-lg hover:bg-brand-red/90 transition-colors"
         >
-          <Plus className="w-4 h-4" /> {t.adminTipeBusPage.tambahTipeBus}
+          <Plus className="w-4 h-4" /> Tambah Armada
         </Link>
       </div>
 
@@ -92,12 +107,12 @@ export default function AdminTipeBus() {
         <input
           value={cari}
           onChange={(e) => setCari(e.target.value)}
-          placeholder={t.adminTipeBusPage.cariPlaceholder}
+          placeholder="Cari kode unit, plat nomor, atau kelas..."
           className="w-full border border-gray-200 rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
         />
       </form>
 
-      {loading && <p className="text-sm text-gray-400 text-center py-10">{t.adminTipeBusPage.memuat}</p>}
+      {loading && <p className="text-sm text-gray-400 text-center py-10">Memuat armada...</p>}
 
       {!loading && error && (
         <div className="text-center py-10">
@@ -106,14 +121,14 @@ export default function AdminTipeBus() {
             onClick={muatData}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy-900 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50"
           >
-            <RefreshCcw className="w-4 h-4" /> {t.adminTipeBusPage.muatUlang}
+            <RefreshCcw className="w-4 h-4" /> Muat Ulang
           </button>
         </div>
       )}
 
       {!loading && !error && daftar.length === 0 && (
         <p className="text-sm text-gray-400 text-center py-10">
-          {cariAktif ? t.adminTipeBusPage.tidakDitemukan : t.adminTipeBusPage.kosong}
+          {cariAktif ? 'Tidak ada armada yang cocok.' : 'Belum ada armada. Tambah kelas bus dulu di menu Tipe Bus kalau belum ada.'}
         </p>
       )}
 
@@ -121,36 +136,62 @@ export default function AdminTipeBus() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {daftar.map((item) => (
-              <div key={item.bus_type_id} className="card">
+              <div key={item.bus_unit_id} className={`card ${!item.is_active ? 'opacity-60' : ''}`}>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <h3 className="font-bold text-navy-900 truncate">{item.bt_name}</h3>
+                    <h3 className="font-bold text-navy-900 truncate flex items-center gap-1.5">
+                      <Bus className="w-4 h-4 shrink-0" /> {item.bu_code}
+                    </h3>
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <Building2 className="w-3.5 h-3.5 shrink-0" /> {item.company_name}
+                      <Building2 className="w-3.5 h-3.5 shrink-0" /> {item.perusahaan} - {item.kelas}
                     </p>
+                    {item.bu_plate_number && <p className="text-xs text-gray-400 mt-0.5">{item.bu_plate_number}</p>}
                   </div>
-                  <Link
-                    to={`/admin/armada?bus_type_id=${item.bus_type_id}`}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 bg-navy-900/5 px-2.5 py-1 rounded-full shrink-0 hover:bg-navy-900/10"
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                      item.is_active ? 'text-brand-teal bg-brand-teal/10' : 'text-gray-500 bg-gray-100'
+                    }`}
                   >
-                    <Bus className="w-3.5 h-3.5" /> {item.jumlah_armada} armada
-                  </Link>
+                    {item.is_active ? 'Aktif' : 'Nonaktif'}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-3">
+                <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                  <span>
+                    Kapasitas: <b className="text-navy-900">{item.bu_capacity} kursi</b>
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 mb-4 min-h-[1.5rem]">
+                  {item.bu_facilities.length === 0 && <span className="text-xs text-gray-400">Belum ada fasilitas</span>}
+                  {item.bu_facilities.map((f) => (
+                    <span key={f} className="text-[11px] font-semibold text-brand-teal bg-brand-teal/10 px-2 py-0.5 rounded-full">
+                      {f}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
                   <Link
-                    to={`/admin/tipe-bus/edit/${item.bus_type_id}`}
+                    to={`/admin/armada/edit/${item.bus_unit_id}`}
                     state={{ item }}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50"
                   >
-                    <Pencil className="w-3.5 h-3.5" /> {t.adminTipeBusPage.edit}
+                    <Pencil className="w-3.5 h-3.5" /> Edit
                   </Link>
                   <button
+                    onClick={() => handleToggleStatus(item)}
+                    disabled={actionLoading === item.bus_unit_id}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <Power className="w-3.5 h-3.5" /> {item.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                  </button>
+                  <button
                     onClick={() => handleHapus(item)}
-                    disabled={actionLoading === item.bus_type_id}
+                    disabled={actionLoading === item.bus_unit_id}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-brand-red border border-brand-red/20 px-2.5 py-1.5 rounded-lg hover:bg-brand-red/5 disabled:opacity-50 ml-auto"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> {t.adminTipeBusPage.hapus}
+                    <Trash2 className="w-3.5 h-3.5" /> Hapus
                   </button>
                 </div>
               </div>
@@ -164,17 +205,17 @@ export default function AdminTipeBus() {
                 disabled={halamanSekarang <= 1}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-40"
               >
-                <ChevronLeft className="w-3.5 h-3.5" /> {t.adminTipeBusPage.sebelumnya}
+                <ChevronLeft className="w-3.5 h-3.5" /> Sebelumnya
               </button>
               <span className="text-xs text-gray-400">
-                {t.adminTipeBusPage.halamanInfo.replace('{halaman}', halamanSekarang).replace('{total}', totalHalaman)}
+                Halaman {halamanSekarang} dari {totalHalaman}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalHalaman, p + 1))}
                 disabled={halamanSekarang >= totalHalaman}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-40"
               >
-                {t.adminTipeBusPage.selanjutnya} <ChevronRight className="w-3.5 h-3.5" />
+                Selanjutnya <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
           )}

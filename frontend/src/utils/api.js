@@ -53,8 +53,8 @@ export const api = {
     const json = await handleResponse(res)
     return json.data
   },
-  getKursi: async (availabilityId) => {
-    const res = await apiFetch(`${API_URL}/jadwal/${availabilityId}/kursi`)
+  getTitikPemberhentian: async (availabilityId) => {
+    const res = await apiFetch(`${API_URL}/jadwal/${availabilityId}/titik-pemberhentian`)
     const json = await handleResponse(res)
     return json.data
   },
@@ -100,34 +100,6 @@ export const api = {
       headers: {
         ...authHeaders(),
       },
-    })
-    return handleResponse(res)
-  },
-  lockKursi: async ({ availability_id, nomor_kursi }) => {
-    const res = await apiFetch(`${API_URL}/kursi/lock`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        availability_id,
-        nomor_kursi,
-        session_id: getSessionId(),
-      }),
-    })
-    return handleResponse(res)
-  },
-  unlockKursi: async ({ availability_id, nomor_kursi }) => {
-    const res = await apiFetch(`${API_URL}/kursi/unlock`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        availability_id,
-        nomor_kursi,
-        session_id: getSessionId(),
-      }),
     })
     return handleResponse(res)
   },
@@ -192,11 +164,11 @@ export const api = {
     })
     return handleResponse(res)
   },
-  getAdminJadwal: async ({ tanggal, routeId, busTypeId, status, page } = {}) => {
+  getAdminJadwal: async ({ tanggal, routeId, busUnitId, status, page } = {}) => {
     const params = new URLSearchParams()
     if (tanggal) params.set('tanggal', tanggal)
     if (routeId) params.set('route_id', routeId)
-    if (busTypeId) params.set('bus_type_id', busTypeId)
+    if (busUnitId) params.set('bus_unit_id', busUnitId)
     if (status) params.set('status', status)
     if (page) params.set('page', page)
     const res = await apiFetch(`${API_URL}/admin/jadwal?${params}`, {
@@ -306,6 +278,99 @@ export const api = {
     })
     return handleResponse(res)
   },
+  getAdminBusUnit: async ({ cari, page, busTypeId } = {}) => {
+    const params = new URLSearchParams()
+    if (cari) params.set('cari', cari)
+    if (page) params.set('page', page)
+    if (busTypeId) params.set('bus_type_id', busTypeId)
+    const res = await apiFetch(`${API_URL}/admin/bus-unit?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminBusUnitOptions: async () => {
+    const res = await apiFetch(`${API_URL}/admin/bus-unit-options`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahBusUnit: async (payload) => {
+    const res = await apiFetch(`${API_URL}/admin/bus-unit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahBusUnit: async (id, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/bus-unit/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  toggleBusUnitStatus: async (id) => {
+    const res = await apiFetch(`${API_URL}/admin/bus-unit/${id}/status`, {
+      method: 'PATCH',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  hapusBusUnit: async (id) => {
+    const res = await apiFetch(`${API_URL}/admin/bus-unit/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getBookingRekap: async ({ mode, dari, sampai } = {}) => {
+    const params = new URLSearchParams()
+    if (mode) params.set('mode', mode)
+    if (dari) params.set('dari', dari)
+    if (sampai) params.set('sampai', sampai)
+    const res = await apiFetch(`${API_URL}/admin/booking/rekap?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  exportBookingRekap: async ({ mode, dari, sampai } = {}) => {
+    const params = new URLSearchParams()
+    if (mode) params.set('mode', mode)
+    if (dari) params.set('dari', dari)
+    if (sampai) params.set('sampai', sampai)
+    const res = await apiFetch(`${API_URL}/admin/booking/export?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    if (!res.ok) throw new Error('Gagal mengekspor laporan.')
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `laporan-penjualan-${mode || 'harian'}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
   getAdminRoute: async ({ cari, page } = {}) => {
     const params = new URLSearchParams()
     if (cari) params.set('cari', cari)
@@ -356,6 +421,45 @@ export const api = {
     })
     return handleResponse(res)
   },
+  getRouteStops: async (routeId) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahRouteStop: async (routeId, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahRouteStop: async (routeId, stopId, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops/${stopId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  hapusRouteStop: async (routeId, stopId) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops/${stopId}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
   getAdminStation: async ({ cari, page } = {}) => {
     const params = new URLSearchParams()
     if (cari) params.set('cari', cari)
@@ -399,6 +503,45 @@ export const api = {
   },
   hapusStation: async (id) => {
     const res = await apiFetch(`${API_URL}/admin/station/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getRouteStops: async (routeId) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  tambahRouteStop: async (routeId, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahRouteStop: async (routeId, stopId, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops/${stopId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  hapusRouteStop: async (routeId, stopId) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops/${stopId}`, {
       method: 'DELETE',
       headers: {
         ...authHeaders(),

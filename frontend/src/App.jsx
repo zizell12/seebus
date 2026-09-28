@@ -18,8 +18,12 @@ import AdminJadwalForm from './pages/admin/AdminJadwalForm'
 import AdminJadwalGenerate from './pages/admin/AdminJadwalGenerate'
 import AdminTipeBus from './pages/admin/AdminTipeBus'
 import AdminTipeBusForm from './pages/admin/AdminTipeBusForm'
+import AdminArmada from './pages/admin/AdminArmada'
+import AdminArmadaForm from './pages/admin/AdminArmadaForm'
+import AdminRekap from './pages/admin/AdminRekap'
 import AdminRute from './pages/admin/AdminRute'
 import AdminRuteForm from './pages/admin/AdminRuteForm'
+import AdminRuteStops from './pages/admin/AdminRuteStops'
 import AdminStasiun from './pages/admin/AdminStasiun'
 import AdminStasiunForm from './pages/admin/AdminStasiunForm'
 import WisataDetail from './pages/WisataDetail'
@@ -82,9 +86,14 @@ export default function App() {
         <Route path="/admin/tipe-bus" element={<AdminTipeBus />} />
         <Route path="/admin/tipe-bus/tambah" element={<AdminTipeBusForm />} />
         <Route path="/admin/tipe-bus/edit/:id" element={<AdminTipeBusForm />} />
+        <Route path="/admin/armada" element={<AdminArmada />} />
+        <Route path="/admin/armada/tambah" element={<AdminArmadaForm />} />
+        <Route path="/admin/armada/edit/:id" element={<AdminArmadaForm />} />
+        <Route path="/admin/rekap" element={<AdminRekap />} />
         <Route path="/admin/rute" element={<AdminRute />} />
         <Route path="/admin/rute/tambah" element={<AdminRuteForm />} />
         <Route path="/admin/rute/edit/:id" element={<AdminRuteForm />} />
+        <Route path="/admin/rute/:id/titik" element={<AdminRuteStops />} />
         <Route path="/admin/terminal" element={<AdminStasiun />} />
         <Route path="/admin/terminal/tambah" element={<AdminStasiunForm />} />
         <Route path="/admin/terminal/edit/:id" element={<AdminStasiunForm />} />

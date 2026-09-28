@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
-use App\Models\BusType;
+use App\Models\BusUnit;
 use App\Models\Route;
 use App\Services\AvailabilityGenerator;
 use Illuminate\Http\JsonResponse;
@@ -19,10 +19,10 @@ class AdminJadwalController extends Controller
     public function index(Request $request): JsonResponse
     {
         $jadwal = Availability::query()
-            ->with(['route.originStation.region', 'route.destinationStation.region', 'busType.company'])
+            ->with(['route.originStation.region', 'route.destinationStation.region', 'busUnit.busType.company'])
             ->when($request->tanggal, fn ($q) => $q->where('av_date', $request->tanggal))
             ->when($request->route_id, fn ($q) => $q->where('route_id', $request->route_id))
-            ->when($request->bus_type_id, fn ($q) => $q->where('bus_type_id', $request->bus_type_id))
+            ->when($request->bus_unit_id, fn ($q) => $q->where('bus_unit_id', $request->bus_unit_id))
             ->when($request->status, fn ($q) => $q->where('av_status', $request->status))
             ->orderByDesc('av_date')
             ->orderBy('av_time')
@@ -36,8 +36,9 @@ class AdminJadwalController extends Controller
             'kota_tujuan' => $item->route->destinationStation->region->rg_city,
             'av_date' => $item->av_date->toDateString(),
             'av_time' => substr($item->av_time, 0, 5),
-            'operator' => $item->busType->company->co_name,
-            'bt_name' => $item->busType->bt_name,
+            'operator' => $item->busUnit->busType->company->co_name,
+            'bt_name' => $item->busUnit->busType->bt_name,
+            'bu_code' => $item->busUnit->bu_code,
             'av_price' => $item->av_price,
             'av_status' => $item->av_status,
             'av_seats' => $item->av_seats,
@@ -48,12 +49,13 @@ class AdminJadwalController extends Controller
 
     /**
      * GET /api/admin/jadwal-options
-     * Daftar rute (asal - tujuan, dengan nama terminal) dan tipe bus,
+     * Daftar rute (asal - tujuan, dengan nama terminal) dan armada (bus_unit),
      * dipakai untuk dropdown di form tambah/edit jadwal panel admin.
      */
     public function options(): JsonResponse
     {
         $routes = Route::with(['originStation.region', 'destinationStation.region'])
+            ->withCount('stops')
             ->get()
             ->map(fn ($route) => [
                 'route_id' => $route->route_id,
@@ -64,90 +66,95 @@ class AdminJadwalController extends Controller
                     $route->destinationStation->stn_name,
                     $route->destinationStation->region->rg_city,
                 ),
+                // Jadwal tidak bisa dibuat kalau titik pemberhentiannya belum
+                // diisi sama sekali -- tanpa ini harga tidak bisa dihitung.
+                'siap_dipakai' => $route->stops_count >= 2,
             ]);
 
-        $busTypes = BusType::with('company')
+        $busUnits = BusUnit::with('busType.company')
+            ->where('is_active', true)
             ->get()
-            ->map(fn ($bt) => [
-                'bus_type_id' => $bt->bus_type_id,
-                'label' => "{$bt->company->co_name} - {$bt->bt_name}",
-                'bt_name' => $bt->bt_name,
-                'bt_capacity' => $bt->bt_capacity,
+            ->map(fn ($bu) => [
+                'bus_unit_id' => $bu->bus_unit_id,
+                'label' => "{$bu->busType->company->co_name} - {$bu->busType->bt_name} ({$bu->bu_code})",
+                'bt_name' => $bu->busType->bt_name,
+                'bu_capacity' => $bu->bu_capacity,
+                'bu_facilities' => $bu->bu_facilities,
             ]);
 
         return response()->json([
             'routes' => $routes,
-            'bus_types' => $busTypes,
+            'bus_units' => $busUnits,
         ]);
     }
 
     /**
      * POST /api/admin/jadwal
-     * Tambah jadwal baru secara manual dari panel admin.
+     * Tambah jadwal baru secara manual dari panel admin. Harga TIDAK
+     * diinput di sini lagi -- otomatis dihitung dari harga per etape yang
+     * sudah didaftarkan untuk rute ini (lihat AdminRuteController).
      */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'route_id' => 'required|exists:route,route_id',
-            'bus_type_id' => 'required|exists:bus_type,bus_type_id',
+            'bus_unit_id' => 'required|exists:bus_unit,bus_unit_id',
             'av_date' => 'required|date',
             'av_time' => 'required|date_format:H:i',
-            'av_price' => 'required|array',
-            'av_price.adult' => 'required|numeric|min:0',
-            'av_price.child' => 'required|numeric|min:0',
         ]);
 
         $sudahAda = Availability::where('route_id', $data['route_id'])
-            ->where('bus_type_id', $data['bus_type_id'])
+            ->where('bus_unit_id', $data['bus_unit_id'])
             ->where('av_date', $data['av_date'])
             ->where('av_time', $data['av_time'].':00')
             ->exists();
 
         if ($sudahAda) {
             return response()->json([
-                'message' => 'Jadwal dengan rute, tipe bus, tanggal, dan jam yang sama sudah ada.',
+                'message' => 'Jadwal dengan rute, armada, tanggal, dan jam yang sama sudah ada.',
             ], 422);
         }
 
         $route = Route::findOrFail($data['route_id']);
-        $busType = BusType::findOrFail($data['bus_type_id']);
+
+        if ($route->stops()->count() < 2) {
+            return response()->json([
+                'message' => 'Rute ini belum punya titik pemberhentian (minimal titik awal & akhir). Lengkapi dulu di menu Rute sebelum bikin jadwal.',
+            ], 422);
+        }
+
+        $busUnit = BusUnit::findOrFail($data['bus_unit_id']);
 
         $availability = AvailabilityGenerator::createAvailability(
             $route,
-            $busType,
+            $busUnit,
             $data['av_date'],
             $data['av_time'].':00',
-            (int) $data['av_price']['adult'],
-            (int) $data['av_price']['child'],
         );
 
         return response()->json([
             'message' => 'Jadwal baru berhasil ditambahkan.',
-            'data' => $availability->load(['route.originStation.region', 'route.destinationStation.region', 'busType.company']),
+            'data' => $availability->load(['route.originStation.region', 'route.destinationStation.region', 'busUnit.busType.company']),
         ], 201);
     }
 
     /**
      * POST /api/admin/jadwal/generate
-     * Generate banyak jadwal sekaligus untuk satu rute + tipe bus, di rentang
-     * tanggal tertentu, dengan opsi memilih hari-dalam-minggu mana saja yang
-     * mau diisi (mis. cuma Senin/Rabu/Jumat) dan bisa lebih dari satu jam
-     * keberangkatan per hari.
+     * Generate banyak jadwal sekaligus untuk satu rute + satu armada, di
+     * rentang tanggal tertentu, dengan opsi memilih hari-dalam-minggu mana
+     * saja yang mau diisi dan bisa lebih dari satu jam keberangkatan per hari.
      */
     public function generate(Request $request): JsonResponse
     {
         $data = $request->validate([
             'route_id' => 'required|exists:route,route_id',
-            'bus_type_id' => 'required|exists:bus_type,bus_type_id',
+            'bus_unit_id' => 'required|exists:bus_unit,bus_unit_id',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'hari' => 'required|array|min:1', // 0=Minggu ... 6=Sabtu
             'hari.*' => 'integer|min:0|max:6',
             'jam' => 'required|array|min:1',
             'jam.*' => 'date_format:H:i',
-            'av_price' => 'required|array',
-            'av_price.adult' => 'required|numeric|min:0',
-            'av_price.child' => 'required|numeric|min:0',
         ]);
 
         // Batas rentang supaya admin tidak tidak sengaja generate ribuan
@@ -161,7 +168,14 @@ class AdminJadwalController extends Controller
         }
 
         $route = Route::findOrFail($data['route_id']);
-        $busType = BusType::findOrFail($data['bus_type_id']);
+
+        if ($route->stops()->count() < 2) {
+            return response()->json([
+                'message' => 'Rute ini belum punya titik pemberhentian (minimal titik awal & akhir). Lengkapi dulu di menu Rute sebelum generate jadwal.',
+            ], 422);
+        }
+
+        $busUnit = BusUnit::findOrFail($data['bus_unit_id']);
 
         $dibuat = 0;
         $dilewati = 0;
@@ -173,7 +187,7 @@ class AdminJadwalController extends Controller
 
             foreach ($data['jam'] as $jam) {
                 $sudahAda = Availability::where('route_id', $route->route_id)
-                    ->where('bus_type_id', $busType->bus_type_id)
+                    ->where('bus_unit_id', $busUnit->bus_unit_id)
                     ->where('av_date', $tgl->toDateString())
                     ->where('av_time', $jam.':00')
                     ->exists();
@@ -185,11 +199,9 @@ class AdminJadwalController extends Controller
 
                 AvailabilityGenerator::createAvailability(
                     $route,
-                    $busType,
+                    $busUnit,
                     $tgl->toDateString(),
                     $jam.':00',
-                    (int) $data['av_price']['adult'],
-                    (int) $data['av_price']['child'],
                 );
                 $dibuat++;
             }
@@ -204,7 +216,10 @@ class AdminJadwalController extends Controller
 
     /**
      * PUT /api/admin/jadwal/{id}
-     * Update harga, jam, atau status satu jadwal.
+     * Update jam atau status satu jadwal. Harga tidak bisa diedit langsung
+     * di sini -- kalau harga rute berubah, edit di menu Rute (titik
+     * pemberhentian), lalu jadwal baru yang dibuat setelahnya otomatis
+     * memakai harga terbaru.
      */
     public function update(Request $request, int $id): JsonResponse
     {
@@ -212,9 +227,6 @@ class AdminJadwalController extends Controller
 
         $data = $request->validate([
             'av_time' => 'sometimes|date_format:H:i',
-            'av_price' => 'sometimes|array',
-            'av_price.adult' => 'required_with:av_price|numeric|min:0',
-            'av_price.child' => 'required_with:av_price|numeric|min:0',
             'av_status' => 'sometimes|in:active,inactive',
         ]);
 

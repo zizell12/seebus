@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Mail\BookingPendingMail;
 use App\Models\Availability;
+use App\Models\AvailabilityLeg;
 use App\Models\Booking;
 use App\Models\Contact;
-use App\Models\Seat;
+use App\Models\RouteStop;
+use App\Services\RouteFareCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -18,9 +19,9 @@ use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
-    
     private const KOMISI_PLATFORM = 0.10; // 10%
     private const BIAYA_LAYANAN = 5000; // Rp, flat per booking
+    private const HOLD_MINUTES = 15;
 
     public function store(Request $request): JsonResponse
     {
@@ -33,96 +34,98 @@ class BookingController extends Controller
             'availability_id' => 'required|exists:availability,availability_id',
             'booking' => 'required|array',
             'booking.bk_notes' => 'nullable|string',
-            'booking.bk_adult_count' => 'required|integer|min:0',
-            'booking.bk_child_count' => 'required|integer|min:0',
-            'booking.bk_infant_count' => 'required|integer|min:0',
-            'booking.bk_status' => 'nullable|in:pending,paid,expired,cancelled',
             'passengers' => 'required|array|min:1',
-            'passengers.*.seat_id' => 'required',
+            'passengers.*.from_stop_id' => 'required|integer|exists:route_stop,route_stop_id',
+            'passengers.*.to_stop_id' => 'required|integer|exists:route_stop,route_stop_id',
             'passengers.*.ps_category' => 'required|in:adult,child,infant',
             'passengers.*.ps_name' => 'required|string|max:100',
             'passengers.*.ps_age' => 'required|integer|min:0',
             'passengers.*.ps_gender' => 'required|in:male,female',
             'passengers.*.ps_nationality' => 'nullable|string|max:50',
-            'session_id' => 'nullable|string|max:100',
         ]);
 
-        $seatIdentifiers = array_map(fn ($passenger) => $passenger['seat_id'], $data['passengers']);
-
-        [$booking, $responseData] = DB::transaction(function () use ($data, $request, $seatIdentifiers) {
+        [$booking, $responseData] = DB::transaction(function () use ($data, $request) {
             $availability = Availability::findOrFail($data['availability_id']);
 
-            $seats = Seat::where('availability_id', $data['availability_id'])
-                ->where(function ($query) use ($seatIdentifiers) {
-                    foreach ($seatIdentifiers as $identifier) {
-                        if (is_numeric($identifier)) {
-                            $query->orWhere('seat_id', $identifier);
-                        } else {
-                            $query->orWhere('seat_number', $identifier);
-                        }
-                    }
-                })
+            // Kunci semua baris availability_leg milik jadwal ini SEKARANG,
+            // sebelum baca angka seats_booked-nya -- supaya kalau ada 2 orang
+            // booking bersamaan buat etape yang sama, yang kedua nunggu
+            // sampai yang pertama selesai, bukan baca angka yang sama-sama
+            // "lum ke-update" (race condition).
+            $legs = AvailabilityLeg::where('availability_id', $availability->availability_id)
                 ->lockForUpdate()
-                ->get();
+                ->get()
+                ->keyBy('route_stop_id');
 
-            if ($seats->count() !== count(array_unique($seatIdentifiers))) {
+            $stopIds = collect($data['passengers'])
+                ->flatMap(fn ($p) => [$p['from_stop_id'], $p['to_stop_id']])
+                ->unique();
+
+            $stops = RouteStop::whereIn('route_stop_id', $stopIds)
+                ->where('route_id', $availability->route_id)
+                ->get()
+                ->keyBy('route_stop_id');
+
+            if ($stops->count() !== $stopIds->count()) {
                 throw ValidationException::withMessages([
-                    'passengers' => ['Beberapa kursi tidak valid untuk jadwal ini.'],
+                    'passengers' => ['Ada titik naik/turun yang tidak valid untuk rute jadwal ini.'],
                 ]);
             }
 
-            
-            $sessionId = $data['session_id'] ?? null;
+            // Hitung, per penumpang: etape mana aja yang dia lewatin + harga
+            // sesuai kategorinya (dewasa/anak/bayi).
+            $normalizedPassengers = [];
+            $tambahanPerEtape = []; // route_stop_id (etape) => jumlah kursi baru yang mau dipakai
+            $totalHarga = 0;
 
-            $tidakTersedia = $seats->filter(function ($seat) use ($sessionId) {
-                if ($seat->seat_status === 'booked') {
-                    return true;
-                }
+            foreach ($data['passengers'] as $passenger) {
+                $from = $stops->get($passenger['from_stop_id']);
+                $to = $stops->get($passenger['to_stop_id']);
 
-                if ($seat->seat_status !== 'locked') {
-                    return false;
-                }
-
-                $lockMasihBerlaku = $seat->seat_locked_until !== null && $seat->seat_locked_until->isFuture();
-                if (! $lockMasihBerlaku) {
-                    return false;
-                }
-
-                
-                return $seat->seat_locked_session !== $sessionId;
-            });
-            if ($tidakTersedia->isNotEmpty()) {
-                throw ValidationException::withMessages([
-                    'passengers' => ['Beberapa kursi sudah dipesan atau terkunci.'],
-                ]);
-            }
-
-            $seatIdByNumber = $seats->keyBy('seat_number');
-            $seatIdById = $seats->keyBy('seat_id');
-
-            $normalizedPassengers = array_map(function ($passenger) use ($seatIdByNumber, $seatIdById) {
-                $identifier = $passenger['seat_id'];
-                if (is_numeric($identifier) && $seatIdById->has((int) $identifier)) {
-                    $seat = $seatIdById->get((int) $identifier);
-                } elseif ($seatIdByNumber->has((string) $identifier)) {
-                    $seat = $seatIdByNumber->get((string) $identifier);
-                } else {
+                if ($from->stop_order >= $to->stop_order) {
                     throw ValidationException::withMessages([
-                        'passengers' => ['Beberapa kursi tidak valid untuk jadwal ini.'],
+                        'passengers' => ['Titik turun harus berada setelah titik naik.'],
                     ]);
                 }
 
-                return [
-                    'seat_id' => $seat->seat_id,
-                    'ps_category' => $passenger['ps_category'],
-                    'ps_name' => $passenger['ps_name'],
-                    'ps_age' => $passenger['ps_age'],
-                    'ps_gender' => $passenger['ps_gender'],
-                    'ps_nationality' => $passenger['ps_nationality'] ?? 'Indonesia',
-                ];
-            }, $data['passengers']);
+                $etapeDilewati = RouteFareCalculator::legsBetween($from, $to);
 
-            $seatIds = array_unique(array_map(fn ($item) => $item['seat_id'], $normalizedPassengers));
+                // Bayi (infant) umumnya duduk di pangkuan, tidak makan kursi --
+                // jadi tidak ikut mengurangi stok, cuma dewasa & anak yang dihitung.
+                if ($passenger['ps_category'] !== 'infant') {
+                    foreach ($etapeDilewati as $etape) {
+                        $tambahanPerEtape[$etape->route_stop_id] = ($tambahanPerEtape[$etape->route_stop_id] ?? 0) + 1;
+                    }
+                }
+
+                $harga = RouteFareCalculator::calculate($from, $to);
+                $hargaPenumpang = (float) ($harga[$passenger['ps_category']] ?? 0);
+                $totalHarga += $hargaPenumpang;
+
+                $normalizedPassengers[] = array_merge($passenger, ['harga' => $hargaPenumpang]);
+            }
+
+            // Cek stok: buat tiap etape yang kepakai, pastikan
+            // (yang sudah kepesan + yang mau ditambah) tidak melebihi kapasitas.
+            foreach ($tambahanPerEtape as $routeStopId => $tambahan) {
+                $leg = $legs->get($routeStopId);
+                $sisaStok = $availability->av_seats - ($leg->seats_booked ?? 0);
+
+                if ($tambahan > $sisaStok) {
+                    $namaTitik = $stops->get($routeStopId)?->station?->stn_name ?? "etape #{$routeStopId}";
+
+                    throw ValidationException::withMessages([
+                        'passengers' => ["Stok kursi tidak cukup di etape menuju {$namaTitik}. Sisa {$sisaStok} kursi."],
+                    ]);
+                }
+            }
+
+            // Semua etape aman -- kurangi stoknya sekarang.
+            foreach ($tambahanPerEtape as $routeStopId => $tambahan) {
+                AvailabilityLeg::where('availability_id', $availability->availability_id)
+                    ->where('route_stop_id', $routeStopId)
+                    ->increment('seats_booked', $tambahan);
+            }
 
             $contactName = $data['contact']['ct_name'] ?? ($data['passengers'][0]['ps_name'] ?? 'Customer');
             $contactEmail = $data['contact']['ct_email'] ?? 'customer@example.com';
@@ -135,19 +138,13 @@ class BookingController extends Controller
                 'ct_nationality' => $data['contact']['ct_nationality'] ?? 'Indonesia',
             ]);
 
-            
             $userId = $request->user()?->user_id;
 
-            // Harga dihitung dari av_price milik jadwal (Availability) yang
-            // tersimpan di database, BUKAN dari angka yang dikirim frontend.
-            // Ini memastikan harga yang tampil ke customer & yang dikelola
-            // admin di panel jadwal selalu sinkron (sama-sama dari av_price),
-            // dan bayi (infant) tidak dikenakan biaya kursi.
-            $hargaDewasa = (float) ($availability->av_price['adult'] ?? 0);
-            $hargaAnak = (float) ($availability->av_price['child'] ?? $hargaDewasa);
+            $bkAdultCount = collect($data['passengers'])->where('ps_category', 'adult')->count();
+            $bkChildCount = collect($data['passengers'])->where('ps_category', 'child')->count();
+            $bkInfantCount = collect($data['passengers'])->where('ps_category', 'infant')->count();
 
-            $publishPrice = ($data['booking']['bk_adult_count'] * $hargaDewasa)
-                + ($data['booking']['bk_child_count'] * $hargaAnak);
+            $publishPrice = $totalHarga;
             $netPrice = round($publishPrice * (1 - self::KOMISI_PLATFORM));
             $totalPrice = $publishPrice + self::BIAYA_LAYANAN;
 
@@ -155,19 +152,21 @@ class BookingController extends Controller
                 'user_id' => $userId,
                 'contact_id' => $contact->contact_id,
                 'availability_id' => $data['availability_id'],
-                'bk_adult_count' => $data['booking']['bk_adult_count'],
-                'bk_child_count' => $data['booking']['bk_child_count'],
-                'bk_infant_count' => $data['booking']['bk_infant_count'],
+                'bk_adult_count' => $bkAdultCount,
+                'bk_child_count' => $bkChildCount,
+                'bk_infant_count' => $bkInfantCount,
                 'bk_notes' => $data['booking']['bk_notes'] ?? null,
                 'bk_net_price' => $netPrice,
                 'bk_publish_price' => $publishPrice,
                 'bk_total_price' => $totalPrice,
                 'bk_status' => 'pending',
+                'bk_hold_until' => now()->addMinutes(self::HOLD_MINUTES),
             ]);
 
             foreach ($normalizedPassengers as $passenger) {
                 $booking->passengers()->create([
-                    'seat_id' => $passenger['seat_id'],
+                    'from_stop_id' => $passenger['from_stop_id'],
+                    'to_stop_id' => $passenger['to_stop_id'],
                     'ps_category' => $passenger['ps_category'],
                     'ps_name' => $passenger['ps_name'],
                     'ps_age' => $passenger['ps_age'],
@@ -175,13 +174,6 @@ class BookingController extends Controller
                     'ps_nationality' => $passenger['ps_nationality'] ?? 'Indonesia',
                 ]);
             }
-
-            $lockSession = "booking-{$booking->booking_id}";
-            Seat::whereIn('seat_id', $seatIds)->update([
-                'seat_status' => 'locked',
-                'seat_locked_session' => $lockSession,
-                'seat_locked_until' => Carbon::now()->addMinutes(15),
-            ]);
 
             return [$booking, [
                 'message' => 'Booking berhasil dibuat.',
@@ -192,11 +184,11 @@ class BookingController extends Controller
                     'bk_publish_price' => $publishPrice,
                     'bk_total_price' => $totalPrice,
                     'biaya_layanan' => self::BIAYA_LAYANAN,
+                    'berlaku_sampai' => $booking->bk_hold_until,
                 ],
             ]];
         });
 
-        
         $recipientEmail = $booking->contact?->ct_email;
         if ($recipientEmail && $recipientEmail !== 'customer@example.com') {
             try {
@@ -213,7 +205,6 @@ class BookingController extends Controller
         return response()->json($responseData, 201);
     }
 
-    
     public function lookup(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -223,10 +214,11 @@ class BookingController extends Controller
 
         $booking = Booking::with([
             'contact',
-            'passengers.seat',
+            'passengers.fromStop.station',
+            'passengers.toStop.station',
             'availability.route.originStation.region',
             'availability.route.destinationStation.region',
-            'availability.busType.company',
+            'availability.busUnit.busType.company',
         ])
             ->where('bk_code', strtoupper(trim($data['bk_code'])))
             ->whereHas('contact', function ($q) use ($data) {
@@ -241,10 +233,6 @@ class BookingController extends Controller
         }
 
         $availability = $booking->availability;
-        $seatLockedUntil = $booking->passengers
-            ->pluck('seat.seat_locked_until')
-            ->filter()
-            ->min();
 
         return response()->json([
             'data' => [
@@ -254,23 +242,24 @@ class BookingController extends Controller
                 'bk_publish_price' => (float) $booking->bk_publish_price,
                 'bk_total_price' => (float) $booking->bk_total_price,
                 'biaya_layanan' => (float) $booking->bk_total_price - (float) $booking->bk_publish_price,
-                'expires_at' => $seatLockedUntil,
+                'berlaku_sampai' => $booking->bk_hold_until,
                 'jadwal' => $availability ? [
                     'availability_id' => $availability->availability_id,
                     'dari' => $availability->route?->originStation?->stn_name,
                     'tujuan' => $availability->route?->destinationStation?->stn_name,
                     'tanggal' => optional($availability->av_date)->toDateString(),
                     'jam_berangkat' => substr((string) $availability->av_time, 0, 5),
-                    'kelas' => $availability->busType?->bt_name,
+                    'kelas' => $availability->busUnit?->busType?->bt_name,
+                    'armada' => $availability->busUnit?->bu_code,
                 ] : null,
-                'kursi' => $booking->passengers->pluck('seat.seat_number')->filter()->values(),
                 'passengers' => $booking->passengers->map(fn ($p) => [
                     'ps_name' => $p->ps_name,
                     'ps_category' => $p->ps_category,
                     'ps_age' => $p->ps_age,
                     'ps_gender' => $p->ps_gender,
                     'ps_nationality' => $p->ps_nationality,
-                    'seat_number' => $p->seat?->seat_number,
+                    'naik_dari' => $p->fromStop?->station?->stn_name,
+                    'turun_di' => $p->toStop?->station?->stn_name,
                 ]),
                 'contact' => [
                     'ct_name' => $booking->contact?->ct_name,

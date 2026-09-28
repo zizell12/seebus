@@ -11,7 +11,7 @@ class Passenger extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'booking_id', 'seat_id', 'ps_category', 'ps_name', 'ps_age',
+        'booking_id', 'from_stop_id', 'to_stop_id', 'ps_category', 'ps_name', 'ps_age',
         'ps_gender', 'ps_nationality',
     ];
 
@@ -20,8 +20,13 @@ class Passenger extends Model
         return $this->belongsTo(Booking::class, 'booking_id', 'booking_id');
     }
 
-    public function seat()
+    public function fromStop()
     {
-        return $this->belongsTo(Seat::class, 'seat_id', 'seat_id');
+        return $this->belongsTo(RouteStop::class, 'from_stop_id', 'route_stop_id');
+    }
+
+    public function toStop()
+    {
+        return $this->belongsTo(RouteStop::class, 'to_stop_id', 'route_stop_id');
     }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
-import { ArrowLeft, X, Building2, Users, Sparkles, ChevronDown, Plus } from 'lucide-react'
+import { ArrowLeft, X, Building2, Sparkles, ChevronDown, Plus } from 'lucide-react'
 import { api } from '../../utils/api'
 import { useLanguage } from '../../context/LanguageContext'
 
@@ -88,89 +88,6 @@ function PerusahaanPicker({ t, companies, companyId, companyName, onSelect, onTy
   )
 }
 
-function FasilitasPicker({ t, fasilitasUmum, value, onChange }) {
-  const [custom, setCustom] = useState('')
-
-  const toggle = (nama) => {
-    if (value.includes(nama)) {
-      onChange(value.filter((f) => f !== nama))
-    } else {
-      onChange([...value, nama])
-    }
-  }
-
-  const tambahCustom = () => {
-    const nama = custom.trim()
-    if (!nama || value.includes(nama)) return
-    onChange([...value, nama])
-    setCustom('')
-  }
-
-  return (
-    <div>
-      <label className="text-xs font-semibold text-gray-500 mb-1.5 block">{t.adminTipeBusPage.labelFasilitas}</label>
-
-      <div className="flex flex-wrap gap-1.5 mb-2.5">
-        {fasilitasUmum.map((f) => {
-          const aktif = value.includes(f)
-          return (
-            <button
-              key={f}
-              type="button"
-              onClick={() => toggle(f)}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                aktif
-                  ? 'bg-navy-900 text-white border-navy-900'
-                  : 'text-gray-600 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              {f}
-            </button>
-          )
-        })}
-      </div>
-
-      <div className="flex gap-2 mb-2.5">
-        <input
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              tambahCustom()
-            }
-          }}
-          placeholder={t.adminTipeBusPage.placeholderFasilitasCustom}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-        />
-        <button
-          type="button"
-          onClick={tambahCustom}
-          className="text-xs font-semibold text-navy-900 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50"
-        >
-          {t.adminTipeBusPage.tambahFasilitas}
-        </button>
-      </div>
-
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {value.map((f) => (
-            <span
-              key={f}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-teal bg-brand-teal/10 px-2.5 py-1 rounded-full"
-            >
-              {f}
-              <button type="button" onClick={() => onChange(value.filter((x) => x !== f))}>
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function AdminTipeBusForm() {
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -179,12 +96,10 @@ export default function AdminTipeBusForm() {
   const isEdit = Boolean(id)
   const initial = isEdit ? location.state?.item || null : null
 
-  const [options, setOptions] = useState({ companies: [], fasilitas_umum: [] })
+  const [options, setOptions] = useState({ companies: [] })
   const [companyId, setCompanyId] = useState(initial?.company_id ? String(initial.company_id) : '')
   const [companyName, setCompanyName] = useState(initial?.company_name || '')
   const [namaTipe, setNamaTipe] = useState(initial?.bt_name || '')
-  const [kapasitas, setKapasitas] = useState(initial?.bt_capacity ?? '')
-  const [fasilitas, setFasilitas] = useState(initial?.bt_facilities || [])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -219,8 +134,6 @@ export default function AdminTipeBusForm() {
     setError('')
     const payload = {
       bt_name: namaTipe,
-      bt_capacity: Number(kapasitas),
-      bt_facilities: fasilitas,
       ...(companyId ? { company_id: Number(companyId) } : { company_name: companyName.trim() }),
     }
     try {
@@ -281,32 +194,24 @@ export default function AdminTipeBusForm() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminTipeBusPage.labelNamaTipe}</label>
-              <input
-                required
-                value={namaTipe}
-                onChange={(e) => setNamaTipe(e.target.value)}
-                placeholder={t.adminTipeBusPage.placeholderNamaTipe}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminTipeBusPage.labelKapasitas}</label>
-              <input
-                required
-                type="number"
-                min="1"
-                max="100"
-                value={kapasitas}
-                onChange={(e) => setKapasitas(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminTipeBusPage.labelNamaTipe}</label>
+            <input
+              required
+              value={namaTipe}
+              onChange={(e) => setNamaTipe(e.target.value)}
+              placeholder={t.adminTipeBusPage.placeholderNamaTipe}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
+            />
           </div>
 
-          <FasilitasPicker t={t} fasilitasUmum={options.fasilitas_umum || []} value={fasilitas} onChange={setFasilitas} />
+          <p className="text-xs text-gray-400">
+            Kapasitas kursi & fasilitas diatur per armada, bukan di sini -- kelola di menu{' '}
+            <Link to="/admin/armada" className="font-semibold text-navy-900 underline">
+              Armada
+            </Link>{' '}
+            setelah kelas ini disimpan.
+          </p>
 
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
@@ -332,32 +237,13 @@ export default function AdminTipeBusForm() {
               <Sparkles className="w-3.5 h-3.5" /> {t.adminTipeBusPage.previewJudul}
             </p>
             <div className="card">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <h3 className="font-bold text-navy-900 truncate">
-                    {namaTipe || t.adminTipeBusPage.placeholderNamaTipe}
-                  </h3>
-                  <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                    <Building2 className="w-3.5 h-3.5 shrink-0" /> {companyName || '-'}
-                  </p>
-                </div>
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 bg-navy-900/5 px-2.5 py-1 rounded-full shrink-0">
-                  <Users className="w-3.5 h-3.5" /> {kapasitas || 0}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 min-h-[1.5rem]">
-                {fasilitas.length === 0 && (
-                  <span className="text-xs text-gray-400">{t.adminTipeBusPage.tanpaFasilitas}</span>
-                )}
-                {fasilitas.map((f) => (
-                  <span
-                    key={f}
-                    className="text-[11px] font-semibold text-brand-teal bg-brand-teal/10 px-2 py-0.5 rounded-full"
-                  >
-                    {f}
-                  </span>
-                ))}
+              <div className="min-w-0">
+                <h3 className="font-bold text-navy-900 truncate">
+                  {namaTipe || t.adminTipeBusPage.placeholderNamaTipe}
+                </h3>
+                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                  <Building2 className="w-3.5 h-3.5 shrink-0" /> {companyName || '-'}
+                </p>
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-2.5">{t.adminTipeBusPage.previewKeterangan}</p>

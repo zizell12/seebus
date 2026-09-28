@@ -16,7 +16,7 @@ const initialState = {
   booking_id: null,
   booking_code: null,
   harga: null,
-  selectedSeats: null,
+  selectedStops: null, // { from_stop_id, to_stop_id, fromName, toName }
   passengers: [],
   contact: {
     nama: '',
@@ -69,10 +69,10 @@ export function BookingProvider({ children }) {
       ...b,
       selectedBus: bus,
     }))
-  const selectSeats = (seats) =>
+  const selectStops = (stops) =>
     saveBooking((b) => ({
       ...b,
-      selectedSeats: seats,
+      selectedStops: stops,
     }))
   const setPassengers = (passengers) =>
     saveBooking((b) => ({
@@ -134,10 +134,17 @@ export function BookingProvider({ children }) {
         jamTiba: '',
         kelas: data.jadwal?.kelas ?? '',
       },
-      selectedSeats: {
-        nomor: data.kursi ?? [],
+      selectedStops: {
+        fromName: data.passengers?.[0]?.naik_dari ?? '',
+        toName: data.passengers?.[0]?.turun_di ?? '',
       },
-      passengers: data.passengers ?? [],
+      passengers: (data.passengers ?? []).map((p) => ({
+        kategori: p.ps_category,
+        nama: p.ps_name,
+        umur: p.ps_age,
+        jenisKelamin: p.ps_gender,
+        kewarganegaraan: p.ps_nationality,
+      })),
       contact: {
         nama: data.contact?.ct_name ?? '',
         email: data.contact?.ct_email ?? '',
@@ -156,7 +163,7 @@ export function BookingProvider({ children }) {
         booking,
         updateSearch,
         selectBus,
-        selectSeats,
+        selectStops,
         setPassengers,
         setContact,
         setBookingId,

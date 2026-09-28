@@ -25,7 +25,7 @@ class BookingPendingMail extends Mailable implements ShouldQueue
             'contact',
             'availability.route.originStation',
             'availability.route.destinationStation',
-            'availability.busType.company',
+            'availability.busUnit.busType.company',
         ]);
 
         $frontendUrl = rtrim(config('services.frontend.url'), '/');

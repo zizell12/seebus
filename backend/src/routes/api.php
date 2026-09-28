@@ -1,14 +1,16 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminBusTypeController;
+use App\Http\Controllers\Api\Admin\AdminBookingController;
+use App\Http\Controllers\Api\Admin\AdminBusUnitController;
 use App\Http\Controllers\Api\Admin\AdminJadwalController;
 use App\Http\Controllers\Api\Admin\AdminPesanController;
 use App\Http\Controllers\Api\Admin\AdminRouteController;
+use App\Http\Controllers\Api\Admin\AdminRouteStopController;
 use App\Http\Controllers\Api\Admin\AdminStationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\JadwalController;
-use App\Http\Controllers\Api\KursiController;
 use App\Http\Controllers\Api\PaypalController;
 use App\Http\Controllers\Api\PesanController;
 use App\Http\Controllers\Api\WilayahController;
@@ -42,11 +44,26 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/bus-type/{id}', [AdminBusTypeController::class, 'update']);
     Route::delete('/bus-type/{id}', [AdminBusTypeController::class, 'destroy']);
 
+    Route::get('/bus-unit-options', [AdminBusUnitController::class, 'options']);
+    Route::get('/bus-unit', [AdminBusUnitController::class, 'index']);
+    Route::post('/bus-unit', [AdminBusUnitController::class, 'store']);
+    Route::put('/bus-unit/{id}', [AdminBusUnitController::class, 'update']);
+    Route::patch('/bus-unit/{id}/status', [AdminBusUnitController::class, 'toggleStatus']);
+    Route::delete('/bus-unit/{id}', [AdminBusUnitController::class, 'destroy']);
+
+    Route::get('/booking/rekap', [AdminBookingController::class, 'rekap']);
+    Route::get('/booking/export', [AdminBookingController::class, 'export']);
+
     Route::get('/route-options', [AdminRouteController::class, 'options']);
     Route::get('/route', [AdminRouteController::class, 'index']);
     Route::post('/route', [AdminRouteController::class, 'store']);
     Route::put('/route/{id}', [AdminRouteController::class, 'update']);
     Route::delete('/route/{id}', [AdminRouteController::class, 'destroy']);
+
+    Route::get('/route/{routeId}/stops', [AdminRouteStopController::class, 'index']);
+    Route::post('/route/{routeId}/stops', [AdminRouteStopController::class, 'store']);
+    Route::put('/route/{routeId}/stops/{stopId}', [AdminRouteStopController::class, 'update']);
+    Route::delete('/route/{routeId}/stops/{stopId}', [AdminRouteStopController::class, 'destroy']);
 
     Route::get('/station-options', [AdminStationController::class, 'options']);
     Route::get('/station', [AdminStationController::class, 'index']);
@@ -75,14 +92,10 @@ Route::post('/booking/lookup', [BookingController::class, 'lookup'])
 // Data publik
 Route::get('/wilayah', [WilayahController::class, 'index']);
 Route::get('/jadwal', [JadwalController::class, 'index']);
-Route::get('/jadwal/{id}/kursi', [JadwalController::class, 'kursi']);
-// Rate-limited supaya endpoint ini tidak disalahgunakan untuk terus-menerus
-// mengunci semua kursi di satu jadwal (menghalangi pembeli asli booking),
-// tanpa perlu login sama sekali.
-Route::post('/kursi/lock', [KursiController::class, 'lock'])
-    ->middleware('throttle:20,1');
-Route::post('/kursi/unlock', [KursiController::class, 'unlock'])
-    ->middleware('throttle:20,1');
+// Daftar titik naik/turun + sisa stok & harga untuk satu jadwal -- gantinya
+// endpoint peta kursi (/jadwal/{id}/kursi) yang sudah tidak relevan lagi
+// sejak nomor kursi dihapus (lihat poin 5 revisi: stok, bukan nomor kursi).
+Route::get('/jadwal/{id}/titik-pemberhentian', [JadwalController::class, 'titikPemberhentian']);
 Route::get('/company-profile', [\App\Http\Controllers\Api\CompanyController::class, 'show']);
 
 // Kontak. Rate-limited supaya form "Hubungi Kami" tidak dibanjiri pesan

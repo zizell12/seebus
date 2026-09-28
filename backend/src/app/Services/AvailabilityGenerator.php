@@ -3,135 +3,84 @@
 namespace App\Services;
 
 use App\Models\Availability;
-use App\Models\BusType;
+use App\Models\AvailabilityLeg;
+use App\Models\BusUnit;
 use App\Models\Route;
-use App\Models\Seat;
-use Illuminate\Support\Carbon;
 
 class AvailabilityGenerator
 {
-    // Sama seperti AvailabilitySeeder, biar harga & jam konsisten
-    private const BASE_PRICE_BY_CATEGORY = [
-        'Ekonomi' => 120000,
-        'Eksekutif' => 180000,
-        'Sleeper' => 250000,
-    ];
-
     private const JAM_BERANGKAT = ['00:30:00', '06:00:00', '09:30:00', '14:00:00', '20:00:00'];
-
-    // Setiap kategori bus punya susunan kursi (kolom) berbeda supaya mapping
-    // kursinya juga terasa beda saat dicoba: Ekonomi 2-3 (5 kolom), Eksekutif
-    // 2-1 (3 kolom), Sleeper 1-1 (2 kolom, kabin/kasur individu).
-    private const SEAT_COLUMNS_BY_CATEGORY = [
-        'Ekonomi' => ['A', 'B', 'C', 'D', 'E'],
-        'Eksekutif' => ['A', 'B', 'C'],
-        'Sleeper' => ['A', 'B'],
-    ];
 
     /**
      * Dipakai oleh AdminJadwalController::store() saat admin menambah satu
-     * jadwal baru secara manual lewat panel admin (rute, tipe bus, tanggal,
-     * jam, dan harga dipilih sendiri oleh admin, beda dengan
-     * ensureForRouteAndDate() yang generate otomatis berdasarkan harga default).
+     * jadwal baru secara manual. Harga TIDAK diinput manual lagi -- otomatis
+     * dihitung dari harga per etape (route_stop) yang sudah didaftarkan
+     * untuk rute ini, supaya harga selalu konsisten dengan data rute.
      */
-    public static function createAvailability(
-        Route $route,
-        BusType $busType,
-        string $date,
-        string $time,
-        int $hargaDewasa,
-        int $hargaAnak,
-    ): Availability {
+    public static function createAvailability(Route $route, BusUnit $busUnit, string $date, string $time): Availability
+    {
         $availability = Availability::create([
             'route_id' => $route->route_id,
-            'bus_type_id' => $busType->bus_type_id,
+            'bus_unit_id' => $busUnit->bus_unit_id,
             'av_date' => $date,
             'av_time' => $time,
-            'av_price' => [
-                'adult' => $hargaDewasa,
-                'child' => $hargaAnak,
-            ],
+            'av_price' => RouteFareCalculator::fullRoutePrice($route),
             'av_status' => 'active',
-            'av_seats' => $busType->bt_capacity,
+            'av_seats' => $busUnit->bu_capacity,
         ]);
 
-        self::generateSeats($availability, $busType->bt_capacity ?? 32, $busType->bt_name);
+        self::generateLegs($availability, $route);
 
         return $availability;
     }
 
     /**
      * Pastikan route ini punya jadwal (availability) untuk tanggal tertentu.
-     * Kalau belum ada, generate untuk semua bus_type (sama seperti seeder awal).
+     * Kalau belum ada, generate untuk semua armada (bus_unit) yang aktif.
      * Aman dipanggil berkali-kali (tidak akan bikin duplikat).
      */
     public static function ensureForRouteAndDate(Route $route, string $date): void
     {
-        $busTypes = BusType::all();
+        $busUnits = BusUnit::where('is_active', true)->get();
 
-        $existingBusTypeIds = Availability::where('route_id', $route->route_id)
+        $existingBusUnitIds = Availability::where('route_id', $route->route_id)
             ->where('av_date', $date)
-            ->pluck('bus_type_id')
+            ->pluck('bus_unit_id')
             ->all();
 
-        foreach ($busTypes as $index => $busType) {
-            if (in_array($busType->bus_type_id, $existingBusTypeIds, true)) {
+        foreach ($busUnits as $index => $busUnit) {
+            if (in_array($busUnit->bus_unit_id, $existingBusUnitIds, true)) {
                 continue; // sudah ada, skip biar tidak dobel
             }
 
-            $harga = self::BASE_PRICE_BY_CATEGORY[$busType->bt_name] ?? 120000;
-
-            $availability = Availability::create([
-                'route_id' => $route->route_id,
-                'bus_type_id' => $busType->bus_type_id,
-                'av_date' => $date,
-                'av_time' => self::JAM_BERANGKAT[$index % count(self::JAM_BERANGKAT)],
-                'av_price' => [
-                    'adult' => $harga,
-                    'child' => (int) ($harga * 0.75),
-                ],
-                'av_status' => 'active',
-                'av_seats' => $busType->bt_capacity,
-            ]);
-
-            self::generateSeats($availability, $busType->bt_capacity ?? 32, $busType->bt_name);
+            self::createAvailability(
+                $route,
+                $busUnit,
+                $date,
+                self::JAM_BERANGKAT[$index % count(self::JAM_BERANGKAT)],
+            );
         }
     }
 
     /**
-     * Dipakai juga oleh AdminJadwalController saat admin menambah jadwal baru
-     * secara manual lewat panel admin, supaya kursi otomatis ter-generate
-     * sesuai kategori bus (Ekonomi/Eksekutif/Sleeper) yang dipilih.
+     * Generate baris availability_leg untuk tiap etape di rute ini -- dipakai
+     * buat ngecek & mengurangi stok kursi per etape saat ada booking.
+     * Ini gantinya generateSeats() versi lama yang bikin baris per nomor
+     * kursi (A1, B1, dst) -- sekarang cuma satu baris stok per etape.
      */
-    public static function generateSeats(Availability $availability, int $capacity, string $kategori): void
+    public static function generateLegs(Availability $availability, Route $route): void
     {
-        $columns = self::SEAT_COLUMNS_BY_CATEGORY[$kategori] ?? ['A', 'B', 'C', 'D'];
-        $rows = (int) ceil($capacity / count($columns));
-        $seatCount = 0;
-        $seatRows = [];
+        $stops = $route->stops()->where('stop_order', '>', 0)->get();
 
-        for ($row = 1; $row <= $rows; $row++) {
-            foreach ($columns as $col) {
-                if ($seatCount >= $capacity) {
-                    break 2;
-                }
+        $legRows = $stops->map(fn ($stop) => [
+            'availability_id' => $availability->availability_id,
+            'route_stop_id' => $stop->route_stop_id,
+            'seats_booked' => 0,
+            'created_at' => now(),
+        ])->all();
 
-                $seatRows[] = [
-                    'availability_id' => $availability->availability_id,
-                    'seat_number' => "{$col}{$row}",
-                    'seat_status' => 'empty',
-                ];
-
-                $seatCount++;
-            }
-        }
-
-        // Insert semua kursi sekaligus dalam 1 query (bulk insert) alih-alih
-        // satu query per kursi. Untuk seeding awal ini bedanya ribuan query
-        // individual jadi cuma satu query per availability -- jauh lebih
-        // cepat, terutama waktu jalanin `php artisan migrate --seed`.
-        if ($seatRows) {
-            Seat::insert($seatRows);
+        if ($legRows) {
+            AvailabilityLeg::insert($legRows);
         }
     }
 }

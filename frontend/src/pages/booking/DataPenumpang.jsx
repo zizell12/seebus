@@ -1,24 +1,25 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Armchair, Pencil } from 'lucide-react'
+import { MapPin, Pencil } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
 import BookingSummaryBar from '../../components/BookingSummaryBar'
-import SeatPickerModal from '../../components/SeatPickerModal'
 import { useBooking, kursiDibutuhkan } from '../../context/BookingContext'
 import { useLanguage } from '../../context/LanguageContext'
-import { api, getSessionId } from '../../utils/api'
+import { api } from '../../utils/api'
 import { savePendingBooking } from '../../utils/pendingBooking'
 import backgrounddb from '../../assets/background-db.png'
+
 function getPassengerDraftKey(selectedBus) {
   return `seebus_passenger_draft_${selectedBus?.availability_id || selectedBus?.id || 'unknown'}`
 }
-function loadPassengerDraft(selectedBus, jumlahKursi) {
+
+function loadPassengerDraft(selectedBus, jumlahPenumpang) {
   try {
     const saved = sessionStorage.getItem(getPassengerDraftKey(selectedBus))
     if (!saved) return null
     const draft = JSON.parse(saved)
     return {
-      detailPenumpang: Array.from({ length: jumlahKursi }, (_, index) => ({
+      detailPenumpang: Array.from({ length: jumlahPenumpang }, (_, index) => ({
         nama: '',
         usia: '',
         jenisKelamin: 'Laki-laki',
@@ -28,162 +29,128 @@ function loadPassengerDraft(selectedBus, jumlahKursi) {
       kontak: draft.kontak,
       pesan: draft.pesan || '',
       tahap: draft.tahap || 'form',
-      kursiTerpilih: draft.kursiTerpilih || null,
+      fromStopId: draft.fromStopId || null,
+      toStopId: draft.toStopId || null,
     }
   } catch {
     return null
   }
 }
+
 export default function DataPenumpang() {
   const navigate = useNavigate()
   const { t } = useLanguage()
-  const { booking, selectSeats, setPassengers, setContact, setNotes, setBookingId, setBookingCode, setHarga } = useBooking()
+  const { booking, selectStops, setPassengers, setContact, setNotes, setBookingId, setBookingCode, setHarga } =
+    useBooking()
   const { selectedBus } = booking
-  const jumlahKursi = kursiDibutuhkan(booking.search.penumpang)
-  const passengerDraft = loadPassengerDraft(selectedBus, jumlahKursi)
+  const jumlahPenumpang = kursiDibutuhkan(booking.search.penumpang)
+  const passengerDraft = loadPassengerDraft(selectedBus, jumlahPenumpang)
+
   const [tahap, setTahap] = useState(passengerDraft?.tahap || 'form')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [seats, setSeats] = useState([])
-  const [seatLoading, setSeatLoading] = useState(false)
-  const [seatError, setSeatError] = useState(null)
+  const [stops, setStops] = useState([])
+  const [stopsLoading, setStopsLoading] = useState(false)
+  const [stopsError, setStopsError] = useState(null)
   const [bookingLoading, setBookingLoading] = useState(false)
   const [bookingError, setBookingError] = useState(null)
   const [kontak, setKontak] = useState(passengerDraft?.kontak || booking.contact)
   const [pesan, setPesan] = useState(passengerDraft?.pesan || booking.notes)
   const [detailPenumpang, setDetailPenumpang] = useState(
     passengerDraft?.detailPenumpang ||
-      Array.from(
-        {
-          length: jumlahKursi,
-        },
-        () => ({
-          nama: '',
-          usia: '',
-          jenisKelamin: 'Laki-laki',
-          kewarganegaraan: 'Indonesia',
-        }),
-      ),
+      Array.from({ length: jumlahPenumpang }, () => ({
+        nama: '',
+        usia: '',
+        jenisKelamin: 'Laki-laki',
+        kewarganegaraan: 'Indonesia',
+      })),
   )
-  const [kursiTerpilih, setKursiTerpilih] = useState(passengerDraft?.kursiTerpilih || null)
+  const [fromStopId, setFromStopId] = useState(passengerDraft?.fromStopId || null)
+  const [toStopId, setToStopId] = useState(passengerDraft?.toStopId || null)
+
   useEffect(() => {
     try {
       sessionStorage.setItem(
         getPassengerDraftKey(selectedBus),
-        JSON.stringify({ detailPenumpang, kontak, pesan, tahap, kursiTerpilih }),
+        JSON.stringify({ detailPenumpang, kontak, pesan, tahap, fromStopId, toStopId }),
       )
     } catch {
       // Form tetap dapat digunakan meskipun penyimpanan browser tidak tersedia.
     }
-  }, [selectedBus, detailPenumpang, kontak, pesan, tahap, kursiTerpilih])
+  }, [selectedBus, detailPenumpang, kontak, pesan, tahap, fromStopId, toStopId])
+
   useEffect(() => {
     if (!selectedBus) navigate('/pencarian')
   }, [selectedBus, navigate])
 
   useEffect(() => {
-    async function loadSeats() {
-      if (!selectedBus || tahap !== 'kursi') return
-      setSeatLoading(true)
-      setSeatError(null)
+    async function loadStops() {
+      if (!selectedBus || tahap !== 'titik') return
+      setStopsLoading(true)
+      setStopsError(null)
       try {
-        const data = await api.getKursi(selectedBus.availability_id)
-        setSeats(data)
+        const data = await api.getTitikPemberhentian(selectedBus.availability_id || selectedBus.id)
+        setStops(data)
       } catch (err) {
-        setSeatError(err.message || 'Gagal memuat kursi')
-        setSeats([])
+        setStopsError(err.message || 'Gagal memuat titik pemberhentian')
+        setStops([])
       }
-      setSeatLoading(false)
+      setStopsLoading(false)
     }
 
-    loadSeats()
+    loadStops()
   }, [selectedBus, tahap])
 
-  const kursiTerpilihRef = useRef(null)
-  const kursiTerkunciRef = useRef(null)
-  const bookingDibuatRef = useRef(false)
-  useEffect(() => {
-    kursiTerpilihRef.current = kursiTerpilih
-  }, [kursiTerpilih])
-  useEffect(() => {
-    return () => {
-      // Kalau halaman ini ditinggalkan (pindah rute) sebelum booking berhasil
-      // dibuat, lepas lock kursi supaya tidak menahan kursi tanpa guna.
-      // Best-effort: kalau request tidak sempat selesai (misal tab ditutup),
-      // job pembersih lock kedaluwarsa di backend yang akan melepasnya.
-      if (!bookingDibuatRef.current && kursiTerkunciRef.current?.length && selectedBus?.availability_id) {
-        api
-          .unlockKursi({
-            availability_id: selectedBus.availability_id,
-            nomor_kursi: kursiTerkunciRef.current,
-          })
-          .catch(() => {})
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const titikNaik = stops.filter((s) => s.bisa_naik)
+  const titikTurun = stops.filter((s) => s.bisa_turun && (!fromStopId || s.stop_order > (stops.find((x) => x.route_stop_id === fromStopId)?.stop_order ?? -1)))
+  const stopTerpilihDari = stops.find((s) => s.route_stop_id === fromStopId)
+  const stopTerpilihKe = stops.find((s) => s.route_stop_id === toStopId)
+
   const updateDetail = (index, field, value) => {
     setDetailPenumpang((prev) => {
       const next = [...prev]
-      next[index] = {
-        ...next[index],
-        [field]: value,
-      }
+      next[index] = { ...next[index], [field]: value }
       return next
     })
   }
+
   const handleSimpanData = (e) => {
     e.preventDefault()
     setContact(kontak)
     setNotes(pesan)
-    setTahap('kursi')
+    setTahap('titik')
   }
-  const handleKonfirmasiKursi = async (seatIdentifiers) => {
-    const selected = seats.filter(
-      (seat) => seatIdentifiers.includes(seat.seat_id) || seatIdentifiers.includes(seat.nomor),
-    )
-    const nomorBaru = selected.map((seat) => seat.nomor)
 
-    setSeatError(null)
-    if (kursiTerpilih?.nomor?.length) {
-      try {
-        await api.unlockKursi({
-          availability_id: selectedBus.availability_id,
-          nomor_kursi: kursiTerpilih.nomor,
-        })
-      } catch (err) {
-        setSeatError(err.message || 'Kursi sebelumnya belum dapat dilepas, silakan coba lagi.')
-        return
-      }
-    }
-    setKursiTerpilih({
-      seatIds: selected.map((seat) => seat.seat_id),
-      nomor: nomorBaru,
-    })
-    setModalOpen(false)
-  }
   const handleLanjutPembayaran = async () => {
-    selectSeats(kursiTerpilih)
-    const passengers = detailPenumpang.map((p, i) => ({
-      seat_id: kursiTerpilih.seatIds[i],
-      nomor: kursiTerpilih.nomor[i],
-      ...p,
+    if (!fromStopId || !toStopId) return
+
+    selectStops({
+      from_stop_id: fromStopId,
+      to_stop_id: toStopId,
+      fromName: stopTerpilihDari?.nama,
+      toName: stopTerpilihKe?.nama,
+    })
+
+    const categories = [
+      ...Array(booking.search.penumpang.dewasa).fill('adult'),
+      ...Array(booking.search.penumpang.anak).fill('child'),
+      ...Array(booking.search.penumpang.bayi).fill('infant'),
+    ]
+
+    const passengersPayload = detailPenumpang.map((p, i) => ({
+      from_stop_id: fromStopId,
+      to_stop_id: toStopId,
+      ps_category: categories[i] || 'adult',
+      ps_name: p.nama,
+      ps_age: Number(p.usia),
+      ps_gender: p.jenisKelamin === 'Perempuan' ? 'female' : 'male',
+      ps_nationality: p.kewarganegaraan || 'Indonesia',
     }))
-    setPassengers(passengers)
+    setPassengers(passengersPayload)
     setContact(kontak)
     setNotes(pesan)
     setBookingError(null)
     setBookingLoading(true)
 
     try {
-      await api.lockKursi({
-        availability_id: selectedBus.availability_id,
-        nomor_kursi: kursiTerpilih.nomor,
-      })
-      kursiTerkunciRef.current = kursiTerpilih.nomor
-      const categories = [
-        ...Array(booking.search.penumpang.dewasa).fill('adult'),
-        ...Array(booking.search.penumpang.anak).fill('child'),
-        ...Array(booking.search.penumpang.bayi).fill('infant'),
-      ]
       const payload = {
         contact: {
           ct_name: kontak.nama,
@@ -192,56 +159,35 @@ export default function DataPenumpang() {
           ct_nationality: kontak.kewarganegaraan,
         },
         availability_id: selectedBus.availability_id || selectedBus.id,
-        session_id: getSessionId(),
         booking: {
           bk_notes: pesan || null,
-          bk_adult_count: booking.search.penumpang.dewasa,
-          bk_child_count: booking.search.penumpang.anak,
-          bk_infant_count: booking.search.penumpang.bayi,
-          bk_status: 'pending',
         },
-        passengers: passengers.map((p, i) => ({
-          seat_id: p.seat_id,
-          ps_category: categories[i] || 'adult',
-          ps_name: p.nama,
-          ps_age: Number(p.usia),
-          ps_gender: p.jenisKelamin === 'Perempuan' ? 'female' : 'male',
-          ps_nationality: p.kewarganegaraan || 'Indonesia',
-        })),
+        passengers: passengersPayload,
       }
 
       const response = await api.createBooking(payload)
-      bookingDibuatRef.current = true
       setBookingId(response.data.booking_id)
       setBookingCode(response.data.booking_code)
       savePendingBooking({
         code: response.data.booking_code,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        expiresAt: response.data.berlaku_sampai || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       })
       setHarga({
-        net: response.data.bk_net_price,
         publish: response.data.bk_publish_price,
         total: response.data.bk_total_price,
         biayaLayanan: response.data.biaya_layanan,
       })
       navigate('/pemesanan/pembayaran')
     } catch (err) {
-      if (kursiTerkunciRef.current?.length && !bookingDibuatRef.current) {
-        await api
-          .unlockKursi({
-            availability_id: selectedBus.availability_id,
-            nomor_kursi: kursiTerkunciRef.current,
-          })
-          .catch(() => {})
-        kursiTerkunciRef.current = null
-      }
       console.error(err)
       setBookingError(err.message || t.penumpangPage.errorDefault)
     } finally {
       setBookingLoading(false)
     }
   }
+
   if (!selectedBus) return null
+
   return (
     <div>
       <section
@@ -267,7 +213,7 @@ export default function DataPenumpang() {
               <h2 className="font-bold text-navy-900 mb-4">{t.penumpangPage.informasiPenumpang}</h2>
               <div className="card">
                 <p className="text-sm font-semibold text-navy-900 mb-4">
-                  {t.penumpangPage.kontakPemesan} ({jumlahKursi} {t.penumpangPage.penumpangLabel})
+                  {t.penumpangPage.kontakPemesan} ({jumlahPenumpang} {t.penumpangPage.penumpangLabel})
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -275,12 +221,7 @@ export default function DataPenumpang() {
                     <input
                       required
                       value={kontak.nama}
-                      onChange={(e) =>
-                        setKontak({
-                          ...kontak,
-                          nama: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setKontak({ ...kontak, nama: e.target.value })}
                       placeholder={t.penumpangPage.placeholderNama}
                       className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                     />
@@ -291,12 +232,7 @@ export default function DataPenumpang() {
                       required
                       type="email"
                       value={kontak.email}
-                      onChange={(e) =>
-                        setKontak({
-                          ...kontak,
-                          email: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setKontak({ ...kontak, email: e.target.value })}
                       placeholder="contact@gmail.com"
                       className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                     />
@@ -306,12 +242,7 @@ export default function DataPenumpang() {
                     <input
                       required
                       value={kontak.phone}
-                      onChange={(e) =>
-                        setKontak({
-                          ...kontak,
-                          phone: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setKontak({ ...kontak, phone: e.target.value })}
                       placeholder="+628734567123"
                       className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                     />
@@ -320,12 +251,7 @@ export default function DataPenumpang() {
                     <label className="text-xs text-gray-500">{t.penumpangPage.labelKewarganegaraan}</label>
                     <select
                       value={kontak.kewarganegaraan}
-                      onChange={(e) =>
-                        setKontak({
-                          ...kontak,
-                          kewarganegaraan: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setKontak({ ...kontak, kewarganegaraan: e.target.value })}
                       className="w-full border rounded-lg px-3 py-2 mt-1 text-sm outline-none focus:border-navy-900"
                     >
                       <option>{t.penumpangPage.opsiIndonesia}</option>
@@ -423,46 +349,73 @@ export default function DataPenumpang() {
                     <div>
                       <p className="font-medium text-navy-900">{p.nama}</p>
                       <p className="text-xs text-gray-400">
-                        {p.jenisKelamin === 'Perempuan' ? t.penumpangPage.perempuan : t.penumpangPage.lakiLaki} · {p.usia}{' '}
-                        {t.penumpangPage.tahun}
+                        {p.jenisKelamin === 'Perempuan' ? t.penumpangPage.perempuan : t.penumpangPage.lakiLaki} ·{' '}
+                        {p.usia} {t.penumpangPage.tahun}
                       </p>
                     </div>
-                    {kursiTerpilih && (
-                      <span className="text-xs font-semibold text-navy-900 bg-navy-900/5 rounded-full px-3 py-1">
-                        {t.penumpangPage.kursiLabel} {kursiTerpilih.nomor[i]}
-                      </span>
-                    )}
                   </div>
                 ))}
               </div>
             </div>
 
             <div>
-              <h2 className="font-bold text-navy-900 mb-4">{t.penumpangPage.pilihKursiJudul}</h2>
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="card w-full flex items-center justify-between hover:border-navy-900 transition-colors border border-transparent"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-navy-900/5 flex items-center justify-center">
-                    <Armchair className="w-4 h-4 text-brand-red" />
+              <h2 className="font-bold text-navy-900 mb-4">Titik Naik & Turun</h2>
+
+              {stopsLoading && <p className="text-sm text-gray-400">Memuat titik pemberhentian...</p>}
+              {stopsError && <p className="text-sm text-brand-red">{stopsError}</p>}
+
+              {!stopsLoading && !stopsError && (
+                <div className="card space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Naik dari</label>
+                      <select
+                        required
+                        value={fromStopId || ''}
+                        onChange={(e) => {
+                          setFromStopId(Number(e.target.value))
+                          setToStopId(null)
+                        }}
+                        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-navy-900"
+                      >
+                        <option value="">Pilih titik naik</option>
+                        {titikNaik.map((s) => (
+                          <option key={s.route_stop_id} value={s.route_stop_id} disabled={s.sisa_stok_dari_sini < jumlahPenumpang}>
+                            {s.nama} {s.sisa_stok_dari_sini < jumlahPenumpang ? '(kursi tidak cukup)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Turun di</label>
+                      <select
+                        required
+                        value={toStopId || ''}
+                        disabled={!fromStopId}
+                        onChange={(e) => setToStopId(Number(e.target.value))}
+                        className="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:border-navy-900 disabled:opacity-50"
+                      >
+                        <option value="">Pilih titik turun</option>
+                        {titikTurun.map((s) => (
+                          <option key={s.route_stop_id} value={s.route_stop_id}>
+                            {s.nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-semibold text-navy-900">
-                      {kursiTerpilih
-                        ? `${t.penumpangPage.kursiLabel} ${kursiTerpilih.nomor.join(', ')} ${t.penumpangPage.kursiDipilih}`
-                        : t.penumpangPage.belumAdaKursi}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {jumlahKursi} {t.penumpangPage.kursiDibutuhkan} {jumlahKursi} {t.penumpangPage.penumpangKecil}
-                    </p>
-                  </div>
+
+                  {stopTerpilihDari && stopTerpilihKe && (
+                    <div className="flex items-center gap-2 text-sm text-navy-900 bg-navy-900/5 rounded-lg px-3 py-2.5">
+                      <MapPin className="w-4 h-4 shrink-0" />
+                      <span>
+                        {stopTerpilihDari.nama} → {stopTerpilihKe.nama} · Sisa {stopTerpilihDari.sisa_stok_dari_sini}{' '}
+                        kursi
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <span className="text-xs text-brand-red font-medium">
-                  {kursiTerpilih ? t.penumpangPage.ubah : t.penumpangPage.pilihKursi}
-                </span>
-              </button>
+              )}
             </div>
 
             {bookingError && (
@@ -472,7 +425,7 @@ export default function DataPenumpang() {
             )}
 
             <button
-              disabled={!kursiTerpilih || bookingLoading}
+              disabled={!fromStopId || !toStopId || bookingLoading}
               onClick={handleLanjutPembayaran}
               className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -481,17 +434,6 @@ export default function DataPenumpang() {
           </div>
         )}
       </div>
-
-      <SeatPickerModal
-        open={modalOpen}
-        jumlahKursi={jumlahKursi}
-        seats={seats}
-        loading={seatLoading}
-        error={seatError}
-        initialSelected={kursiTerpilih?.nomor || []}
-        onClose={() => setModalOpen(false)}
-        onConfirm={handleKonfirmasiKursi}
-      />
     </div>
   )
 }
