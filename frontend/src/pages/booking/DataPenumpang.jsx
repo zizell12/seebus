@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MapPin, Pencil } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
 import BookingSummaryBar from '../../components/BookingSummaryBar'
-import { useBooking, kursiDibutuhkan } from '../../context/BookingContext'
+import { useBooking, totalPenumpang } from '../../context/BookingContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../utils/api'
 import { savePendingBooking } from '../../utils/pendingBooking'
@@ -43,7 +43,7 @@ export default function DataPenumpang() {
   const { booking, selectStops, setPassengers, setContact, setNotes, setBookingId, setBookingCode, setHarga } =
     useBooking()
   const { selectedBus } = booking
-  const jumlahPenumpang = kursiDibutuhkan(booking.search.penumpang)
+  const jumlahPenumpang = totalPenumpang(booking.search.penumpang)
   const passengerDraft = loadPassengerDraft(selectedBus, jumlahPenumpang)
 
   const [tahap, setTahap] = useState(passengerDraft?.tahap || 'form')

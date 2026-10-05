@@ -10,6 +10,7 @@ use App\Models\Booking;
 use App\Models\Contact;
 use App\Models\RouteStop;
 use App\Services\RouteFareCalculator;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,10 +27,10 @@ class BookingController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'contact' => 'nullable|array',
+            'contact' => 'required|array',
             'contact.ct_name' => 'nullable|string|max:100',
-            'contact.ct_email' => 'nullable|email|max:100',
-            'contact.ct_phone' => 'nullable|string|max:20',
+            'contact.ct_email' => 'required|email|max:100',
+            'contact.ct_phone' => 'required|string|max:20',
             'contact.ct_nationality' => 'nullable|string|max:50',
             'availability_id' => 'required|exists:availability,availability_id',
             'booking' => 'required|array',
@@ -45,7 +46,20 @@ class BookingController extends Controller
         ]);
 
         [$booking, $responseData] = DB::transaction(function () use ($data, $request) {
-            $availability = Availability::findOrFail($data['availability_id']);
+            $availability = Availability::with('busUnit')->findOrFail($data['availability_id']);
+            $departure = Carbon::parse($availability->av_date->toDateString().' '.$availability->av_time, config('app.timezone'));
+
+            if ($availability->av_status !== 'active' || $departure->lessThanOrEqualTo(now())) {
+                throw ValidationException::withMessages([
+                    'availability_id' => ['Jadwal ini sudah tidak tersedia untuk dipesan.'],
+                ]);
+            }
+
+            if (! $availability->busUnit || ! $availability->busUnit->is_active) {
+                throw ValidationException::withMessages([
+                    'availability_id' => ['Armada pada jadwal ini sudah tidak aktif.'],
+                ]);
+            }
 
             // Kunci semua baris availability_leg milik jadwal ini SEKARANG,
             // sebelum baca angka seats_booked-nya -- supaya kalau ada 2 orang
@@ -128,8 +142,8 @@ class BookingController extends Controller
             }
 
             $contactName = $data['contact']['ct_name'] ?? ($data['passengers'][0]['ps_name'] ?? 'Customer');
-            $contactEmail = $data['contact']['ct_email'] ?? 'customer@example.com';
-            $contactPhone = $data['contact']['ct_phone'] ?? '0000000000';
+            $contactEmail = $data['contact']['ct_email'];
+            $contactPhone = $data['contact']['ct_phone'];
 
             $contact = Contact::create([
                 'ct_name' => $contactName,
@@ -190,7 +204,7 @@ class BookingController extends Controller
         });
 
         $recipientEmail = $booking->contact?->ct_email;
-        if ($recipientEmail && $recipientEmail !== 'customer@example.com') {
+        if ($recipientEmail) {
             try {
                 Mail::to($recipientEmail)->send(new BookingPendingMail($booking));
             } catch (\Throwable $e) {

@@ -117,7 +117,7 @@ export default function AdminRekap() {
 
       {!loading && data && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
             <div className="card flex items-center gap-4">
               <div className="w-11 h-11 rounded-full bg-navy-900/10 flex items-center justify-center shrink-0">
                 <Ticket className="w-5 h-5 text-navy-900" />
@@ -132,7 +132,25 @@ export default function AdminRekap() {
                 <TrendingUp className="w-5 h-5 text-brand-teal" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">Total Pendapatan</p>
+                <p className="text-xs text-gray-500">Pendapatan Tiket</p>
+                <p className="text-xl font-bold text-navy-900">{formatRupiah(data.ringkasan.pendapatan_tiket)}</p>
+              </div>
+            </div>
+            <div className="card flex items-center gap-4">
+              <div className="w-11 h-11 rounded-full bg-brand-red/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-brand-red" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Biaya Layanan</p>
+                <p className="text-xl font-bold text-navy-900">{formatRupiah(data.ringkasan.biaya_layanan)}</p>
+              </div>
+            </div>
+            <div className="card flex items-center gap-4">
+              <div className="w-11 h-11 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-amber-700" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Total Dibayar</p>
                 <p className="text-xl font-bold text-navy-900">{formatRupiah(data.ringkasan.total_pendapatan)}</p>
               </div>
             </div>
@@ -165,7 +183,9 @@ export default function AdminRekap() {
                     <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
                       <th className="py-2 font-semibold">Periode</th>
                       <th className="py-2 font-semibold">Tiket Terjual</th>
-                      <th className="py-2 font-semibold">Pendapatan</th>
+                      <th className="py-2 font-semibold">Pendapatan Tiket</th>
+                      <th className="py-2 font-semibold">Biaya Layanan</th>
+                      <th className="py-2 font-semibold">Total Dibayar</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -173,6 +193,8 @@ export default function AdminRekap() {
                       <tr key={r.periode} className="border-b border-gray-50">
                         <td className="py-2 text-navy-900">{formatPeriode(r.periode, mode)}</td>
                         <td className="py-2 text-navy-900">{r.jumlah_tiket}</td>
+                        <td className="py-2 text-navy-900">{formatRupiah(r.pendapatan_tiket)}</td>
+                        <td className="py-2 text-navy-900">{formatRupiah(r.biaya_layanan)}</td>
                         <td className="py-2 text-navy-900 font-medium">{formatRupiah(r.total_pendapatan)}</td>
                       </tr>
                     ))}

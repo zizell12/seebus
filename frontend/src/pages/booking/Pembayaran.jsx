@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapPin } from 'lucide-react'
 import SearchForm from '../../components/SearchForm'
@@ -11,6 +11,8 @@ export default function Pembayaran() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
   const { booking } = useBooking()
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
   const { selectedBus, selectedStops, passengers, search, contact, notes, booking_id, booking_code, harga } = booking
   const totalHarga = harga?.total ?? 0
   const hargaPublish = harga?.publish ?? 0
@@ -96,13 +98,23 @@ export default function Pembayaran() {
           <button
             type="button"
             className="w-full bg-[#0070ba] text-white rounded-lg px-4 py-3 font-semibold hover:bg-[#005ea6]"
+            disabled={paymentLoading}
             onClick={async () => {
-              const response = await api.createPaypalOrder({ booking_id })
-              window.location.assign(response.data.redirect_url)
+              if (paymentLoading) return
+              setPaymentLoading(true)
+              setPaymentError('')
+              try {
+                const response = await api.createPaypalOrder({ bk_code: booking_code, email: contact.email })
+                window.location.assign(response.data.redirect_url)
+              } catch (error) {
+                setPaymentError(error.message || 'Tidak dapat memulai pembayaran PayPal.')
+                setPaymentLoading(false)
+              }
             }}
           >
-            Bayar dengan PayPal
+            {paymentLoading ? 'Menghubungkan ke PayPal...' : 'Bayar dengan PayPal'}
           </button>
+          {paymentError && <p role="alert" className="mt-3 text-sm text-red-700">{paymentError}</p>}
         </div>
       </div>
     </div>

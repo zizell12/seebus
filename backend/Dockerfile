@@ -18,7 +18,7 @@ RUN mkdir -p storage/framework/sessions storage/framework/views storage/framewor
 CMD sh -c "git config --global --add safe.directory /var/www && \
     composer install --optimize-autoloader --no-interaction && \
     if [ ! -f .env ]; then cp .env.example .env; fi && \
-    php artisan key:generate --force && \
+    if ! grep -q '^APP_KEY=.' .env; then php artisan key:generate; fi && \
     php artisan storage:link && \
     php artisan migrate --force && \
     chown -R www-data:www-data storage bootstrap/cache && \

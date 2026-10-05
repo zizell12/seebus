@@ -124,13 +124,13 @@ export const api = {
     const json = await handleResponse(res)
     return json.data
   },
-  createPaypalOrder: async ({ booking_id }) => {
+  createPaypalOrder: async ({ bk_code, email }) => {
     const res = await apiFetch(`${API_URL}/paypal/create-order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ booking_id }),
+      body: JSON.stringify({ bk_code, email }),
     })
     return handleResponse(res)
   },

@@ -39,7 +39,7 @@ export default function Footer() {
                 {t.footer.tentangKami}
               </Link>
             </li>
-            <li>
+            <li> 
               <a href="/" onClick={handleBookingClick} className="hover:text-navy-900 cursor-pointer">
                 {t.footer.bookingTiket}
               </a>
@@ -76,6 +76,7 @@ export default function Footer() {
               </Link>
             </li>
           </ul>
+          
         </div>
       </div>
       <div className="border-t py-4 text-center text-xs text-gray-400">{t.footer.copyright}</div>

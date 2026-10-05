@@ -15,9 +15,10 @@ return [
     */
 
     'paypal' => [
-    'base_url' => env('PAYPAL_BASE_URL'),
-    'client_id' => env('PAYPAL_CLIENT_ID'),
-    'secret' => env('PAYPAL_SECRET'),
+        'base_url' => env('PAYPAL_BASE_URL'),
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'secret' => env('PAYPAL_SECRET'),
+        'usd_idr_rate' => (int) env('PAYPAL_USD_IDR_RATE', 15000),
     ],
 
     // Base URL frontend React (bukan backend), dipakai untuk menyusun link

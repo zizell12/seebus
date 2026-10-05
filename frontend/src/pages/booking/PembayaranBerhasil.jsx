@@ -1,17 +1,38 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Mail } from 'lucide-react'
+import { useBooking } from '../../context/BookingContext'
+import { api } from '../../utils/api'
 import { clearPendingBooking } from '../../utils/pendingBooking'
 export default function PembayaranBerhasil() {
+  const { booking, resetBooking } = useBooking()
   const params = new URLSearchParams(window.location.search)
   const status = params.get('status')
   const bookingCode = params.get('booking_code')
-  const isSuccess = status === 'success'
+  const [paymentVerified, setPaymentVerified] = useState(false)
+  const [verificationError, setVerificationError] = useState(false)
+  const isSuccess = status === 'success' && paymentVerified
   useEffect(() => {
-    if (status === 'success') {
-      clearPendingBooking()
+    if (status !== 'success') return
+    if (!bookingCode || !booking.contact.email) {
+      setVerificationError(true)
+      return
     }
-  }, [status])
+    let active = true
+    api.lookupBooking({ bk_code: bookingCode, email: booking.contact.email })
+      .then((data) => {
+        if (!active) return
+        if (data.bk_status === 'paid') {
+          setPaymentVerified(true)
+          clearPendingBooking()
+          resetBooking()
+        } else {
+          setVerificationError(true)
+        }
+      })
+      .catch(() => active && setVerificationError(true))
+    return () => { active = false }
+  }, [status, bookingCode, booking.contact.email])
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
       <div className="max-w-md mx-auto px-4 md:px-6 py-16 text-center">
@@ -20,12 +41,12 @@ export default function PembayaranBerhasil() {
             <CheckCircle2 className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-xl font-bold text-navy-900 mb-6">
-            {isSuccess ? 'Pembayaran berhasil' : 'Pembayaran belum berhasil'}
+            {isSuccess ? 'Pembayaran berhasil' : status === 'success' && !verificationError ? 'Memeriksa pembayaran...' : 'Pembayaran belum berhasil'}
           </h1>
 
           <div className="card flex items-center gap-3 text-sm text-navy-900 mb-4">
             <Mail className="w-5 h-5 text-brand-red shrink-0" />
-            {isSuccess ? 'E-tiket akan dikirim ke email Anda.' : 'Silakan coba pembayaran kembali atau hubungi layanan kami.'}
+            {isSuccess ? 'Pembayaran terkonfirmasi. E-tiket akan dikirim ke email Anda.' : verificationError ? 'Status pembayaran belum dapat dikonfirmasi. Periksa booking Anda atau hubungi layanan kami.' : 'Silakan coba pembayaran kembali atau hubungi layanan kami.'}
           </div>
 
           {bookingCode && <p className="text-sm text-gray-600">Kode booking: <strong>{bookingCode}</strong></p>}

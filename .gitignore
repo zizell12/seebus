@@ -18,3 +18,13 @@ Thumbs.db
 
 # backend/.env
 backend/.env
+
+# Secrets, runtime logs, dependencies, caches, and local databases
+**/.env
+!**/.env.example
+**/laravel*.log
+**/storage/logs/*
+**/vendor/
+**/node_modules/
+**/bootstrap/cache/*
+**/database.sqlite

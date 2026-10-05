@@ -8,24 +8,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AdminBookingController extends Controller
 {
-    /**
-     * Format tanggal buat GROUP BY di MySQL, tergantung mode laporan yang
-     * diminta -- ini yang nentuin apa satu baris rekap mewakili 1 hari,
-     * 1 bulan, atau 1 tahun.
-     */
-    private function formatGroupByMode(string $mode): string
-    {
-        return match ($mode) {
-            'tahunan' => '%Y',
-            'bulanan' => '%Y-%m',
-            default => '%Y-%m-%d', // harian
-        };
-    }
-
     /**
      * Rentang tanggal default kalau admin tidak isi dari/sampai secara
      * eksplisit -- disesuaikan per mode supaya default-nya masuk akal
@@ -54,22 +40,14 @@ class AdminBookingController extends Controller
      */
     public function rekap(Request $request): JsonResponse
     {
+        $request->validate([
+            'dari' => 'sometimes|required|date',
+            'sampai' => 'sometimes|required|date',
+        ]);
         $mode = in_array($request->mode, ['harian', 'bulanan', 'tahunan']) ? $request->mode : 'harian';
         [$dari, $sampai] = $this->resolveRange($request, $mode);
-        $formatGroup = $this->formatGroupByMode($mode);
-
-        $baseQuery = fn () => Booking::where('bk_status', 'paid')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$dari, $sampai]);
-
-        $ringkasan = $baseQuery()
-            ->selectRaw('COUNT(*) as jumlah_tiket, COALESCE(SUM(bk_total_price),0) as total_pendapatan')
-            ->first();
-
-        $rincian = $baseQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '{$formatGroup}') as periode, COUNT(*) as jumlah_tiket, COALESCE(SUM(bk_total_price),0) as total_pendapatan")
-            ->groupBy('periode')
-            ->orderBy('periode')
-            ->get();
+        $this->validateRange($dari, $sampai);
+        [$ringkasan, $rincian] = $this->buildReport($dari, $sampai, $mode);
 
         return response()->json([
             'mode' => $mode,
@@ -87,16 +65,14 @@ class AdminBookingController extends Controller
      */
     public function export(Request $request): Response
     {
+        $request->validate([
+            'dari' => 'sometimes|required|date',
+            'sampai' => 'sometimes|required|date',
+        ]);
         $mode = in_array($request->mode, ['harian', 'bulanan', 'tahunan']) ? $request->mode : 'harian';
         [$dari, $sampai] = $this->resolveRange($request, $mode);
-        $formatGroup = $this->formatGroupByMode($mode);
-
-        $rincian = Booking::where('bk_status', 'paid')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$dari, $sampai])
-            ->selectRaw("DATE_FORMAT(created_at, '{$formatGroup}') as periode, COUNT(*) as jumlah_tiket, COALESCE(SUM(bk_total_price),0) as total_pendapatan")
-            ->groupBy('periode')
-            ->orderBy('periode')
-            ->get();
+        $this->validateRange($dari, $sampai);
+        [, $rincian] = $this->buildReport($dari, $sampai, $mode);
 
         $labelPeriode = match ($mode) {
             'tahunan' => 'Tahun',
@@ -104,14 +80,76 @@ class AdminBookingController extends Controller
             default => 'Tanggal',
         };
 
-        $csv = "{$labelPeriode},Jumlah Tiket Terjual,Total Pendapatan (Rp)\n";
+        $csv = "{$labelPeriode},Tiket Terjual,Pendapatan Tiket (Rp),Biaya Layanan (Rp),Total Dibayar (Rp)\n";
         foreach ($rincian as $baris) {
-            $csv .= sprintf("%s,%d,%s\n", $baris->periode, $baris->jumlah_tiket, $baris->total_pendapatan);
+            $csv .= sprintf("%s,%d,%s,%s,%s\n", $baris->periode, $baris->jumlah_tiket, $baris->pendapatan_tiket, $baris->biaya_layanan, $baris->total_pendapatan);
         }
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=laporan-penjualan-{$mode}-{$dari}_{$sampai}.csv",
         ]);
+    }
+
+    private function validateRange(string $dari, string $sampai): void
+    {
+        if (Carbon::parse($dari)->gt(Carbon::parse($sampai))) {
+            throw ValidationException::withMessages([
+                'dari' => ['Tanggal awal tidak boleh setelah tanggal akhir.'],
+            ]);
+        }
+    }
+
+    private function buildReport(string $dari, string $sampai, string $mode): array
+    {
+        $bookings = Booking::query()
+            ->where('bk_status', 'paid')
+            ->whereNotNull('bk_paid_at')
+            ->whereBetween('bk_paid_at', [Carbon::parse($dari)->startOfDay(), Carbon::parse($sampai)->endOfDay()])
+            ->get([
+                'bk_paid_at', 'bk_adult_count', 'bk_child_count', 'bk_infant_count',
+                'bk_net_price', 'bk_publish_price', 'bk_total_price',
+            ]);
+
+        $periodKey = match ($mode) {
+            'tahunan' => 'Y',
+            'bulanan' => 'Y-m',
+            default => 'Y-m-d',
+        };
+        $emptyRow = fn (string $period) => (object) [
+            'periode' => $period,
+            'jumlah_booking' => 0,
+            'jumlah_tiket' => 0,
+            'pendapatan_tiket' => 0.0,
+            'biaya_layanan' => 0.0,
+            'total_pendapatan' => 0.0,
+            'komisi_platform' => 0.0,
+            'setoran_po' => 0.0,
+        ];
+
+        $rincian = $bookings->groupBy(fn ($booking) => $booking->bk_paid_at->format($periodKey))
+            ->map(function ($items, $period) use ($emptyRow) {
+                $row = $emptyRow($period);
+                $row->jumlah_booking = $items->count();
+                $row->jumlah_tiket = $items->sum(fn ($booking) => $booking->bk_adult_count + $booking->bk_child_count + $booking->bk_infant_count);
+                $row->pendapatan_tiket = $items->sum('bk_publish_price');
+                $row->biaya_layanan = $items->sum(fn ($booking) => $booking->bk_total_price - $booking->bk_publish_price);
+                $row->total_pendapatan = $items->sum('bk_total_price');
+                $row->komisi_platform = $items->sum(fn ($booking) => $booking->bk_publish_price - $booking->bk_net_price);
+                $row->setoran_po = $items->sum('bk_net_price');
+
+                return $row;
+            })
+            ->sortBy('periode')
+            ->values();
+
+        $ringkasan = $emptyRow('total');
+        foreach ($rincian as $row) {
+            foreach (['jumlah_booking', 'jumlah_tiket', 'pendapatan_tiket', 'biaya_layanan', 'total_pendapatan', 'komisi_platform', 'setoran_po'] as $field) {
+                $ringkasan->{$field} += $row->{$field};
+            }
+        }
+
+        return [$ringkasan, $rincian];
     }
 }

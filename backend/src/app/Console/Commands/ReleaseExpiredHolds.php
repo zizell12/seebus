@@ -32,16 +32,25 @@ class ReleaseExpiredHolds extends Command
     {
         $now = now();
 
-        $bookingKedaluwarsa = Booking::with('passengers')
+        $bookingIds = Booking::query()
             ->where('bk_status', 'pending')
             ->whereNotNull('bk_hold_until')
             ->where('bk_hold_until', '<', $now)
-            ->get();
+            ->pluck('booking_id');
 
         $jumlahBooking = 0;
 
-        DB::transaction(function () use ($bookingKedaluwarsa, &$jumlahBooking) {
-            foreach ($bookingKedaluwarsa as $booking) {
+        foreach ($bookingIds as $bookingId) {
+            DB::transaction(function () use ($bookingId, $now, &$jumlahBooking) {
+                $booking = Booking::with('passengers.fromStop', 'passengers.toStop')
+                    ->whereKey($bookingId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $booking || $booking->bk_status !== 'pending' || ! $booking->bk_hold_until || $booking->bk_hold_until->greaterThanOrEqualTo($now)) {
+                    return;
+                }
+
                 // Hitung ulang etape mana aja yang dipakai penumpang booking
                 // ini (bayi tidak ikut dihitung, sama seperti waktu booking
                 // dibuat di BookingController::store()).
@@ -74,8 +83,8 @@ class ReleaseExpiredHolds extends Command
 
                 $booking->update(['bk_status' => 'expired']);
                 $jumlahBooking++;
-            }
-        });
+            });
+        }
 
         $this->info("Booking ditandai expired & stoknya dikembalikan: {$jumlahBooking}.");
 

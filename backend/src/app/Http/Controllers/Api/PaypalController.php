@@ -8,6 +8,7 @@ use App\Models\Booking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -18,12 +19,25 @@ class PaypalController extends Controller
     public function createOrder(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'booking_id' => 'required|exists:booking,booking_id',
+            'bk_code' => 'required|string|max:20',
+            'email' => 'required|email|max:100',
         ]);
 
-        $booking = Booking::findOrFail($data['booking_id']);
+        $booking = $this->findBooking($data['bk_code'], $data['email']);
+        if (! $booking) {
+            return Response::json(['message' => 'Booking tidak ditemukan.'], 404);
+        }
+
         if ($booking->bk_status !== 'pending') {
             return Response::json(['message' => 'Booking harus berstatus pending sebelum membuat order.'], 422);
+        }
+        if (! $booking->bk_hold_until || $booking->bk_hold_until->isPast()) {
+            return Response::json(['message' => 'Waktu pembayaran booking sudah habis. Silakan buat booking baru.'], 410);
+        }
+
+        $exchangeRate = (int) config('services.paypal.usd_idr_rate');
+        if ($exchangeRate < 1) {
+            return Response::json(['message' => 'Kurs PayPal belum dikonfigurasi dengan benar.'], 500);
         }
 
         $paypalUrl = config('services.paypal.base_url');
@@ -42,7 +56,7 @@ class PaypalController extends Controller
                     [
                         'amount' => [
                             'currency_code' => 'USD',
-                            'value' => number_format($booking->bk_total_price / 15000, 2, '.', ''),
+                            'value' => number_format($booking->bk_total_price / $exchangeRate, 2, '.', ''),
                         ],
                     ],
                 ],
@@ -127,13 +141,21 @@ class PaypalController extends Controller
     public function captureOrder(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'booking_id' => 'required|exists:booking,booking_id',
+            'bk_code' => 'required|string|max:20',
+            'email' => 'required|email|max:100',
             'orderID' => 'required|string',
         ]);
 
-        $booking = Booking::findOrFail($data['booking_id']);
+        $booking = $this->findBooking($data['bk_code'], $data['email']);
+        if (! $booking) {
+            return Response::json(['message' => 'Booking tidak ditemukan.'], 404);
+        }
+
         if ($booking->bk_status !== 'pending') {
             return Response::json(['message' => 'Booking harus pending sebelum capture pembayaran.'], 422);
+        }
+        if (! $booking->bk_hold_until || $booking->bk_hold_until->isPast()) {
+            return Response::json(['message' => 'Waktu pembayaran booking sudah habis. Silakan buat booking baru.'], 410);
         }
 
         // Penting: orderID yang mau di-capture HARUS sama dengan orderID yang
@@ -165,32 +187,41 @@ class PaypalController extends Controller
 
     private function captureBooking(Booking $booking, string $orderId): array
     {
-        if ($booking->bk_status === 'paid') {
-            return ['status' => 'COMPLETED'];
+        [$captureData, $wasCaptured] = DB::transaction(function () use ($booking, $orderId) {
+            $lockedBooking = Booking::whereKey($booking->booking_id)->lockForUpdate()->firstOrFail();
+            if ($lockedBooking->bk_status === 'paid') {
+            return [['status' => 'COMPLETED'], false];
+            }
+            if ($lockedBooking->bk_status !== 'pending' || ! $lockedBooking->bk_hold_until || $lockedBooking->bk_hold_until->isPast()) {
+                throw new \RuntimeException('Booking tidak lagi dapat dibayar.');
+            }
+
+            $paypalUrl = config('services.paypal.base_url');
+            $response = Http::withBasicAuth(config('services.paypal.client_id'), config('services.paypal.secret'))
+                ->withBody('{}', 'application/json')
+                ->post("{$paypalUrl}/v2/checkout/orders/{$orderId}/capture");
+
+            if (! $response->successful()) {
+                throw new \RuntimeException('PayPal capture gagal: '.$response->body());
+            }
+
+            $captureData = $response->json();
+            if (($captureData['status'] ?? null) !== 'COMPLETED') {
+                throw new \RuntimeException('Pembayaran belum selesai.');
+            }
+
+            $lockedBooking->update(['bk_status' => 'paid', 'bk_paid_at' => now()]);
+
+            return [$captureData, true];
+        });
+
+        $booking->refresh();
+        if ($wasCaptured) {
+            $booking->load('contact');
+            $recipientEmail = $booking->contact?->ct_email;
+        } else {
+            $recipientEmail = null;
         }
-
-        if ($booking->bk_status !== 'pending') {
-            throw new \RuntimeException('Booking harus pending sebelum capture pembayaran.');
-        }
-
-        $paypalUrl = config('services.paypal.base_url');
-        $response = Http::withBasicAuth(config('services.paypal.client_id'), config('services.paypal.secret'))
-            ->withBody('{}', 'application/json')
-            ->post("{$paypalUrl}/v2/checkout/orders/{$orderId}/capture");
-
-        if (! $response->successful()) {
-            throw new \RuntimeException('PayPal capture gagal: '.$response->body());
-        }
-
-        $captureData = $response->json();
-        if (($captureData['status'] ?? null) !== 'COMPLETED') {
-            throw new \RuntimeException('Pembayaran belum selesai.');
-        }
-
-        $booking->update(['bk_status' => 'paid']);
-
-        $booking->load('contact');
-        $recipientEmail = $booking->contact?->ct_email;
         if ($recipientEmail) {
             try {
                 Mail::to($recipientEmail)->send(new TicketMail($booking));
@@ -204,6 +235,13 @@ class PaypalController extends Controller
         }
 
         return $captureData;
+    }
+
+    private function findBooking(string $bookingCode, string $email): ?Booking
+    {
+        return Booking::where('bk_code', strtoupper(trim($bookingCode)))
+            ->whereHas('contact', fn ($query) => $query->whereRaw('LOWER(ct_email) = ?', [strtolower(trim($email))]))
+            ->first();
     }
 
     private function callbackUrl(Booking $booking, string $status): string

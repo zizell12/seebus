@@ -53,7 +53,7 @@ export default function LanjutkanPembayaran() {
         return
       }
 
-      if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+      if (data.berlaku_sampai && new Date(data.berlaku_sampai).getTime() < Date.now()) {
         clearPendingBooking()
         setError(
           id
@@ -64,8 +64,8 @@ export default function LanjutkanPembayaran() {
       }
 
       hydrateFromLookup(data)
-      if (data.expires_at) {
-        savePendingBooking({ code: data.bk_code, expiresAt: data.expires_at })
+      if (data.berlaku_sampai) {
+        savePendingBooking({ code: data.bk_code, expiresAt: data.berlaku_sampai })
       }
       navigate('/pemesanan/pembayaran')
     } catch (err) {
