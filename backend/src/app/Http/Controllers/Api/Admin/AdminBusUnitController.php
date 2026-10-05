@@ -98,12 +98,7 @@ class AdminBusUnitController extends Controller
         ]);
     }
 
-    /**
-     * PATCH /api/admin/bus-unit/{id}/status
-     * Aktif/nonaktifkan armada. Armada nonaktif tidak akan dipakai lagi
-     * saat generate jadwal baru (lihat AvailabilityGenerator), tapi jadwal
-     * lama yang sudah memakainya tetap aman/tidak berubah.
-     */
+    
     public function toggleStatus(int $id): JsonResponse
     {
         $busUnit = BusUnit::findOrFail($id);
