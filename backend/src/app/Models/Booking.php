@@ -16,11 +16,20 @@ class Booking extends Model
         'bk_adult_count', 'bk_child_count', 'bk_infant_count',
         'bk_notes', 'bk_net_price', 'bk_publish_price', 'bk_total_price',
         'bk_status', 'bk_paypal_order_id', 'bk_hold_until', 'bk_paid_at',
+        'bk_paypal_capture_id', 'bk_paid_usd', 'bk_cancelled_at',
+        'bk_cancel_reason', 'bk_cancelled_by', 'bk_refund_percent',
+        'bk_refund_amount', 'bk_refund_usd', 'bk_paypal_refund_id',
+        'bk_refunded_at',
     ];
 
     protected $casts = [
         'bk_hold_until' => 'datetime',
         'bk_paid_at' => 'datetime',
+        'bk_cancelled_at' => 'datetime',
+        'bk_refunded_at' => 'datetime',
+        'bk_paid_usd' => 'decimal:2',
+        'bk_refund_amount' => 'decimal:2',
+        'bk_refund_usd' => 'decimal:2',
     ];
 
     protected static function booted()
