@@ -5,7 +5,7 @@ import SearchForm from '../../components/SearchForm'
 import PenumpangPicker from '../../components/PenumpangPicker'
 import { useBooking, totalPenumpang } from '../../context/BookingContext'
 import { useLanguage } from '../../context/LanguageContext'
-import { getFasilitasLabel, getTipeLabel, getWaktuKategoriLabel } from '../../utils/busHelpers'
+import { getFasilitasLabel, getTipeLabel, getWaktuKategoriLabel, kapitalisasi } from '../../utils/busHelpers'
 import { api } from '../../utils/api'
 import backgrounddb from '../../assets/background-db.png'
 const tipeBusKeys = ['Eksekutif', 'Sleeper', 'Ekonomi']
@@ -68,13 +68,13 @@ function BusCard({ bus, onPilih, t }) {
             {t.busList.ruteTercepat.toUpperCase()}
           </span>
         )}
-        <h3 className="font-bold text-navy-900">{bus.operator}</h3>
+        <h3 className="font-bold text-navy-900">{kapitalisasi(bus.operator)}</h3>
         <p className="text-xs text-gray-400 mb-3">{getTipeLabel(bus.kelas, t)}</p>
 
         <div className="flex items-center gap-4">
           <div>
             <p className="font-bold text-navy-900">{bus.jamBerangkat}</p>
-            <p className="text-xs text-gray-400">{bus.terminalAsal || bus.dari}</p>
+            <p className="text-xs text-gray-400">{kapitalisasi(bus.terminalAsal || bus.dari)}</p>
           </div>
           <div className="flex-1 flex flex-col items-center px-2">
             <span className="text-xs text-gray-400 mb-1">{bus.durasi}</span>
@@ -84,7 +84,7 @@ function BusCard({ bus, onPilih, t }) {
           </div>
           <div>
             <p className="font-bold text-navy-900">{bus.jamTiba}</p>
-            <p className="text-xs text-gray-400">{bus.terminalTujuan || bus.tujuan}</p>
+            <p className="text-xs text-gray-400">{kapitalisasi(bus.terminalTujuan || bus.tujuan)}</p>
           </div>
         </div>
 
@@ -154,10 +154,7 @@ export default function HasilPencarian() {
     })
     setEditMode(false)
   }
-  // Dulu ada draftFilter (sementara) + appliedFilter (baru aktif setelah
-  // tombol "Simpan Filter" dipencet). Sekarang digabung jadi satu state
-  // filter yang langsung dipakai begitu diubah, jadi hasil pencarian
-  // otomatis ke-filter instan tanpa perlu tombol "Simpan Filter".
+  
   const [filter, setFilter] = useState(() => filterFromSearchParams(searchParams))
   const [sortBy, setSortBy] = useState(() => searchParams.get('sort') || 'harga')
   useEffect(() => {
@@ -266,7 +263,7 @@ export default function HasilPencarian() {
   }, [dari, tujuan, tanggal])
   const hasilFiltered = useMemo(() => {
     let candidates = hasil
-    if (filter.tipeBus) candidates = candidates.filter((b) => b.tipe === filter.tipeBus)
+    if (filter.tipeBus) candidates = candidates.filter((b) => String(b.tipe || '').toLowerCase() === filter.tipeBus.toLowerCase())
     if (filter.waktu) candidates = candidates.filter((b) => b.waktuKategori === filter.waktu)
     if (filter.fasilitas.length)
       candidates = candidates.filter((b) => filter.fasilitas.every((f) => b.fasilitas.includes(f)))

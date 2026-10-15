@@ -2,16 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\AvailabilityLeg;
 use App\Models\Booking;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class BookingCancellationService
 {
-    public function cancel(Booking $booking, string $reason, int $cancelledBy): array
+    public function cancel(Booking $booking, string $reason, string $refundMode, int $cancelledBy): array
     {
-        return DB::transaction(function () use ($booking, $reason, $cancelledBy) {
+        return DB::transaction(function () use ($booking, $reason, $refundMode, $cancelledBy) {
             $locked = Booking::whereKey($booking->booking_id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -23,7 +22,7 @@ class BookingCancellationService
             }
 
             if ($locked->bk_status === 'pending') {
-                $this->releaseSeats($locked);
+                BookingStockReleaser::release($locked);
                 $locked->update([
                     'bk_status' => 'cancelled',
                     'bk_cancelled_at' => now(),
@@ -34,40 +33,39 @@ class BookingCancellationService
                 return [
                     'status' => 'cancelled',
                     'refund_required' => false,
-                    'refund_percent' => 0,
+                    'refund_percent' => null,
                     'refund_amount' => 0,
+                    'refund_usd' => 0,
+                    'refund_id' => null,
+                    'pembatalan' => [
+                        'refund_persen' => null,
+                        'refund_jumlah' => 0,
+                        'refund_usd' => 0,
+                        'refund_id' => null,
+                    ],
                 ];
             }
 
-            throw ValidationException::withMessages([
-                'booking_status' => 'Booking berstatus paid tidak boleh dibatalkan melalui service ini.',
-            ])->status(422);
+            if ($locked->bk_status !== 'paid') {
+                throw ValidationException::withMessages([
+                    'booking_status' => 'Booking tidak dapat dibatalkan.',
+                ])->status(422);
+            }
+
+            if ($locked->bk_refunded_at || $locked->bk_paypal_refund_id) {
+                throw ValidationException::withMessages([
+                    'booking_status' => 'Booking ini sudah pernah di-refund.',
+                ])->status(422);
+            }
+
+            if (RefundPolicy::departure($locked)->isPast()) {
+                throw ValidationException::withMessages([
+                    'booking_status' => 'Booking yang sudah berangkat tidak dapat dibatalkan.',
+                ])->status(422);
+            }
+
+            $result = (new BookingRefundService)->cancelPaid($locked, $reason, $refundMode, $cancelledBy);
+            return array_merge($result, ['data' => $result]);
         });
-    }
-
-    public function releaseSeats(Booking $booking): void
-    {
-        $seatsByLeg = [];
-        $booking->loadMissing(['passengers.fromStop', 'passengers.toStop']);
-
-        foreach ($booking->passengers as $passenger) {
-            if ($passenger->ps_category === 'infant') {
-                continue;
-            }
-
-            if (! $passenger->fromStop || ! $passenger->toStop) {
-                continue;
-            }
-
-            foreach (RouteFareCalculator::legsBetween($passenger->fromStop, $passenger->toStop) as $leg) {
-                $seatsByLeg[$leg->route_stop_id] = ($seatsByLeg[$leg->route_stop_id] ?? 0) + 1;
-            }
-        }
-
-        foreach ($seatsByLeg as $routeStopId => $seats) {
-            AvailabilityLeg::where('availability_id', $booking->availability_id)
-                ->where('route_stop_id', $routeStopId)
-                ->decrement('seats_booked', $seats);
-        }
     }
 }

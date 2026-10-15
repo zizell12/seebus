@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AvailabilityLeg;
 use App\Models\Booking;
+use App\Services\BookingStockReleaser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -51,36 +51,7 @@ class ReleaseExpiredHolds extends Command
                     return;
                 }
 
-                // Hitung ulang etape mana aja yang dipakai penumpang booking
-                // ini (bayi tidak ikut dihitung, sama seperti waktu booking
-                // dibuat di BookingController::store()).
-                $tambahanPerEtape = [];
-
-                foreach ($booking->passengers as $passenger) {
-                    if ($passenger->ps_category === 'infant') {
-                        continue;
-                    }
-
-                    if (! $passenger->fromStop || ! $passenger->toStop) {
-                        continue;
-                    }
-
-                    $etapeDilewati = \App\Services\RouteFareCalculator::legsBetween(
-                        $passenger->fromStop,
-                        $passenger->toStop,
-                    );
-
-                    foreach ($etapeDilewati as $etape) {
-                        $tambahanPerEtape[$etape->route_stop_id] = ($tambahanPerEtape[$etape->route_stop_id] ?? 0) + 1;
-                    }
-                }
-
-                foreach ($tambahanPerEtape as $routeStopId => $jumlah) {
-                    AvailabilityLeg::where('availability_id', $booking->availability_id)
-                        ->where('route_stop_id', $routeStopId)
-                        ->decrement('seats_booked', $jumlah);
-                }
-
+                BookingStockReleaser::release($booking);
                 $booking->update(['bk_status' => 'expired']);
                 $jumlahBooking++;
             });

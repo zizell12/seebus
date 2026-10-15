@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('bk_refund_usd', 14, 2)->nullable();
             $table->string('bk_paypal_refund_id', 100)->nullable();
             $table->timestamp('bk_refunded_at')->nullable();
+            $table->index(['bk_cancelled_at']);
 
             $table->index('bk_paypal_capture_id');
         });
@@ -27,7 +28,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('booking', function (Blueprint $table) {
-            $table->dropIndex('bk_paypal_capture_id');
+            $table->dropIndex(['bk_paypal_capture_id']);
+            $table->dropIndex(['bk_cancelled_at']);
             $table->dropColumn(['bk_paypal_capture_id', 'bk_paid_usd', 'bk_cancelled_at', 'bk_cancel_reason', 'bk_cancelled_by', 'bk_refund_percent', 'bk_refund_amount', 'bk_refund_usd', 'bk_paypal_refund_id', 'bk_refunded_at']);
         });
     }

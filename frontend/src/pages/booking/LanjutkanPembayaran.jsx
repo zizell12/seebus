@@ -43,6 +43,40 @@ export default function LanjutkanPembayaran() {
         return
       }
 
+      if (data.bk_status === 'cancelled') {
+        clearPendingBooking()
+        const pembatalan = data.pembatalan
+        if (pembatalan?.sudah_dibayar === false) {
+          setError(
+            id
+              ? 'Booking ini telah dibatalkan. Anda belum melakukan pembayaran, jadi tidak ada dana yang perlu dikembalikan.'
+              : 'This booking has been cancelled. You have not made a payment, so there are no funds to refund.'
+          )
+          return
+        }
+
+        if (pembatalan?.refund_jumlah > 0) {
+          const jumlahRefund = new Intl.NumberFormat('id-ID').format(pembatalan.refund_jumlah)
+          const refundUsd =
+            pembatalan.refund_usd !== null && pembatalan.refund_usd > 0
+              ? ` ($${Number(pembatalan.refund_usd).toFixed(2)} USD)`
+              : ''
+          setError(
+            id
+              ? `Booking ini telah dibatalkan. Refund ${pembatalan.refund_persen}% sebesar Rp ${jumlahRefund}${refundUsd} telah diproses ke PayPal Anda. Lama dana masuk bergantung pada PayPal dan bank Anda.`
+              : `This booking has been cancelled. A ${pembatalan.refund_persen}% refund of Rp ${jumlahRefund}${refundUsd} has been processed to your PayPal account. The time for funds to arrive depends on PayPal and your bank.`
+          )
+          return
+        }
+
+        setError(
+          id
+            ? 'Booking ini telah dibatalkan. Sesuai kebijakan pembatalan, booking ini tidak mendapat pengembalian dana.'
+            : 'This booking has been cancelled. Under the cancellation policy, this booking is not eligible for a refund.'
+        )
+        return
+      }
+
       if (data.bk_status !== 'pending') {
         clearPendingBooking()
         setError(

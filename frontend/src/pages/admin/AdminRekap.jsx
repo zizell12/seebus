@@ -156,6 +156,18 @@ export default function AdminRekap() {
             </div>
           </div>
 
+          {data.ringkasan.jumlah_pembatalan > 0 && (
+            <section className="card mb-8">
+              <h2 className="text-sm font-bold text-navy-900 mb-3">Ringkasan pembatalan</h2>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div><p className="text-xs text-gray-500">Jumlah pembatalan</p><p className="font-bold text-navy-900">{data.ringkasan.jumlah_pembatalan}</p></div>
+                <div><p className="text-xs text-gray-500">Dibayar dibatalkan</p><p className="font-bold text-navy-900">{formatRupiah(data.ringkasan.dibayar_dibatalkan)}</p></div>
+                <div><p className="text-xs text-gray-500">Total refund</p><p className="font-bold text-navy-900">{formatRupiah(data.ringkasan.total_refund)}</p></div>
+                <div><p className="text-xs text-gray-500">Ditahan</p><p className="font-bold text-navy-900">{formatRupiah(data.ringkasan.ditahan)}</p></div>
+              </div>
+            </section>
+          )}
+
           {rincian.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-10">Belum ada penjualan di rentang ini.</p>
           ) : (
@@ -186,6 +198,9 @@ export default function AdminRekap() {
                       <th className="py-2 font-semibold">Pendapatan Tiket</th>
                       <th className="py-2 font-semibold">Biaya Layanan</th>
                       <th className="py-2 font-semibold">Total Dibayar</th>
+                      <th className="py-2 font-semibold">Pembatalan</th>
+                      <th className="py-2 font-semibold">Refund</th>
+                      <th className="py-2 font-semibold">Ditahan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -196,6 +211,9 @@ export default function AdminRekap() {
                         <td className="py-2 text-navy-900">{formatRupiah(r.pendapatan_tiket)}</td>
                         <td className="py-2 text-navy-900">{formatRupiah(r.biaya_layanan)}</td>
                         <td className="py-2 text-navy-900 font-medium">{formatRupiah(r.total_pendapatan)}</td>
+                        <td className="py-2 text-navy-900">{r.jumlah_pembatalan}</td>
+                        <td className="py-2 text-navy-900">{formatRupiah(r.total_refund)}</td>
+                        <td className="py-2 text-navy-900">{formatRupiah(r.ditahan)}</td>
                       </tr>
                     ))}
                   </tbody>

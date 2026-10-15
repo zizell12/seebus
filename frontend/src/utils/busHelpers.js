@@ -6,13 +6,18 @@ export function getFasilitasLabel(kode, t) {
   }
   return map[kode] || kode
 }
+// Data nama di database selalu huruf kecil (lihat NormalizesCase di backend),
+// jadi tampilan harus dikapitalisasi di sini. "terminal tawang alun" -> "Terminal Tawang Alun".
+export function kapitalisasi(teks) {
+  return String(teks || '').replace(/(^|[\s(-])(\p{L})/gu, (_, awal, huruf) => awal + huruf.toUpperCase())
+}
 export function getTipeLabel(kode, t) {
   const map = {
-    Sleeper: t.busList.tipeSleeper,
-    Eksekutif: t.busList.tipeEksekutif,
-    Ekonomi: t.busList.tipeEkonomi,
+    sleeper: t.busList.tipeSleeper,
+    eksekutif: t.busList.tipeEksekutif,
+    ekonomi: t.busList.tipeEkonomi,
   }
-  return map[kode] || kode
+  return map[String(kode || '').toLowerCase()] || kapitalisasi(kode)
 }
 export function getWaktuKategoriLabel(kode, t) {
   const map = {

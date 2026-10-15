@@ -39,6 +39,12 @@ class JadwalController extends Controller
             ->orderBy('av_time')
             ->get();
 
+        $jadwal = $jadwal->filter(function ($item) {
+            $berangkat = Carbon::parse($item->av_date->toDateString().' '.$item->av_time, config('app.timezone'));
+
+            return $berangkat->greaterThan(now());
+        })->values();
+
         $result = $jadwal->map(function ($item) {
             // Stok yang ditampilkan di kartu hasil pencarian adalah stok
             // buat perjalanan PENUH (dari titik paling awal ke titik paling

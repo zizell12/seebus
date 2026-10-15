@@ -20,6 +20,7 @@ import AdminTipeBus from './pages/admin/AdminTipeBus'
 import AdminTipeBusForm from './pages/admin/AdminTipeBusForm'
 import AdminArmada from './pages/admin/AdminArmada'
 import AdminArmadaForm from './pages/admin/AdminArmadaForm'
+import AdminBooking from './pages/admin/AdminBooking'
 import AdminRekap from './pages/admin/AdminRekap'
 import AdminRute from './pages/admin/AdminRute'
 import AdminRuteForm from './pages/admin/AdminRuteForm'
@@ -89,6 +90,8 @@ export default function App() {
         <Route path="/admin/armada" element={<AdminArmada />} />
         <Route path="/admin/armada/tambah" element={<AdminArmadaForm />} />
         <Route path="/admin/armada/edit/:id" element={<AdminArmadaForm />} />
+        <Route path="/admin/booking" element={<AdminBooking />} />
+        <Route path="/admin/booking/:id" element={<AdminBooking />} />
         <Route path="/admin/rekap" element={<AdminRekap />} />
         <Route path="/admin/rute" element={<AdminRute />} />
         <Route path="/admin/rute/tambah" element={<AdminRuteForm />} />

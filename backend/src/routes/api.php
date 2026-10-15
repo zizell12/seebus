@@ -51,8 +51,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::patch('/bus-unit/{id}/status', [AdminBusUnitController::class, 'toggleStatus']);
     Route::delete('/bus-unit/{id}', [AdminBusUnitController::class, 'destroy']);
 
+    Route::get('/booking', [AdminBookingController::class, 'index']);
     Route::get('/booking/rekap', [AdminBookingController::class, 'rekap']);
     Route::get('/booking/export', [AdminBookingController::class, 'export']);
+    Route::get('/booking/{bookingId}', [AdminBookingController::class, 'show'])->whereNumber('bookingId');
+    Route::post('/booking/{bookingId}/cancel', [AdminBookingController::class, 'cancel'])->whereNumber('bookingId');
 
     Route::get('/route-options', [AdminRouteController::class, 'options']);
     Route::get('/route', [AdminRouteController::class, 'index']);

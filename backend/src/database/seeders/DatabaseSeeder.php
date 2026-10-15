@@ -12,12 +12,11 @@ class DatabaseSeeder extends Seeder
             RegionSeeder::class,
             StationSeeder::class,
             RouteSeeder::class,
+            RouteStopSeeder::class,
             CompanySeeder::class,
             BusTypeSeeder::class,
+            BusUnitSeeder::class,
             AvailabilitySeeder::class,
-            // SeatSeeder sudah tidak dipakai lagi: kursi sekarang otomatis
-            // dibuat oleh AvailabilityGenerator setiap kali jadwal dibuat
-            // (baik saat seeding maupun saat auto-generate on-demand).
             UserSeeder::class,
         ]);
     }

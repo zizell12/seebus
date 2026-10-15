@@ -3,123 +3,125 @@
 namespace Tests\Feature;
 
 use App\Models\Availability;
-use App\Models\BusType;
-use App\Models\Company;
-use App\Models\Region;
-use App\Models\Route;
-use App\Models\Seat;
-use App\Models\Station;
+use App\Models\Booking;
+use App\Models\RouteStop;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Tests\Concerns\BuildsBookingFixtures;
 use Tests\TestCase;
 
 class BookingApiTest extends TestCase
 {
+    use BuildsBookingFixtures;
     use RefreshDatabase;
 
     public function test_booking_endpoint_can_create_booking(): void
     {
-        $regionFrom = Region::create([
-            'rg_district' => 'Jember',
-            'rg_city' => 'Jember',
-            'rg_province' => 'Jawa Timur',
-        ]);
+        Mail::fake();
+        $existingBooking = $this->makeBooking();
+        $before = $this->seatsBooked($existingBooking);
+        $stops = RouteStop::where('route_id', $existingBooking->availability->route_id)
+            ->orderBy('stop_order')
+            ->get();
 
-        $regionTo = Region::create([
-            'rg_district' => 'Surabaya',
-            'rg_city' => 'Surabaya',
-            'rg_province' => 'Jawa Timur',
-        ]);
+        $response = $this->postJson('/api/booking', $this->payload(
+            $existingBooking->availability_id,
+            $stops[0]->route_stop_id,
+            $stops[1]->route_stop_id,
+        ));
 
-        $stationFrom = Station::create([
-            'region_id' => $regionFrom->region_id,
-            'stn_name' => 'Terminal Jember',
-            'stn_address' => 'Jl. Jember',
-        ]);
+        $response->assertCreated()
+            ->assertJsonStructure(['data' => ['booking_code', 'booking_id']]);
 
-        $stationTo = Station::create([
-            'region_id' => $regionTo->region_id,
-            'stn_name' => 'Terminal Surabaya',
-            'stn_address' => 'Jl. Surabaya',
-        ]);
+        $created = Booking::findOrFail($response->json('data.booking_id'));
+        $this->assertSame('pending', $created->bk_status);
+        $this->assertNotNull($created->bk_hold_until);
+        $this->assertSame($before + 1, $this->seatsBooked($existingBooking));
+    }
 
-        $route = Route::create([
-            'origin_station_id' => $stationFrom->station_id,
-            'destination_station_id' => $stationTo->station_id,
-            'rt_distance_km' => 180,
-            'rt_duration_min' => 300,
-        ]);
+    public function test_booking_endpoint_rejects_full_leg_without_changing_stock_or_creating_booking(): void
+    {
+        Mail::fake();
+        $existingBooking = $this->makeBooking();
+        $before = $this->seatsBooked($existingBooking);
+        Availability::whereKey($existingBooking->availability_id)->update(['av_seats' => $before]);
+        $stops = RouteStop::where('route_id', $existingBooking->availability->route_id)
+            ->orderBy('stop_order')
+            ->get();
+        $bookingCount = Booking::where('availability_id', $existingBooking->availability_id)->count();
 
-        $company = Company::create([
-            'co_name' => 'Test Company',
-            'co_address' => 'Jl. Test',
-            'co_phone' => '08123456789',
-            'co_email' => 'test@example.com',
-        ]);
+        $this->postJson('/api/booking', $this->payload(
+            $existingBooking->availability_id,
+            $stops[0]->route_stop_id,
+            $stops[1]->route_stop_id,
+        ))->assertUnprocessable();
 
-        $busType = BusType::create([
-            'company_id' => $company->company_id,
-            'bt_name' => 'Ekonomi',
-            'bt_capacity' => 32,
-            'bt_facilities' => 'AC, Kursi Standar',
-        ]);
+        $this->assertSame($before, $this->seatsBooked($existingBooking));
+        $this->assertSame($bookingCount, Booking::where('availability_id', $existingBooking->availability_id)->count());
+    }
 
-        $availability = Availability::create([
-            'route_id' => $route->route_id,
-            'bus_type_id' => $busType->bus_type_id,
-            'av_date' => '2026-07-20',
-            'av_time' => '06:00:00',
-            'av_price' => json_encode(['adult' => 120000, 'child' => 90000]),
-            'av_status' => 'active',
-            'av_seats' => 32,
-        ]);
+    public function test_infant_booking_does_not_reduce_leg_stock(): void
+    {
+        Mail::fake();
+        $existingBooking = $this->makeBooking();
+        $before = $this->seatsBooked($existingBooking);
+        $stops = RouteStop::where('route_id', $existingBooking->availability->route_id)
+            ->orderBy('stop_order')
+            ->get();
 
-        $seat = Seat::create([
-            'availability_id' => $availability->availability_id,
-            'seat_number' => 'A1',
-            'seat_status' => 'empty',
-            'seat_locked_session' => null,
-            'seat_locked_until' => null,
-        ]);
+        $this->postJson('/api/booking', $this->payload(
+            $existingBooking->availability_id,
+            $stops[0]->route_stop_id,
+            $stops[1]->route_stop_id,
+            'infant',
+        ))->assertCreated();
 
-        $response = $this->postJson('/api/booking', [
+        $this->assertSame($before, $this->seatsBooked($existingBooking));
+    }
+
+    public function test_booking_endpoint_rejects_dropoff_before_or_at_pickup(): void
+    {
+        Mail::fake();
+        $existingBooking = $this->makeBooking();
+        $stops = RouteStop::where('route_id', $existingBooking->availability->route_id)
+            ->orderBy('stop_order')
+            ->get();
+
+        foreach ([[$stops[1]->route_stop_id, $stops[0]->route_stop_id], [$stops[0]->route_stop_id, $stops[0]->route_stop_id]] as [$from, $to]) {
+            $this->postJson('/api/booking', $this->payload(
+                $existingBooking->availability_id,
+                $from,
+                $to,
+            ))->assertUnprocessable();
+        }
+
+        $this->assertSame(2, $this->seatsBooked($existingBooking));
+    }
+
+    private function payload(int $availabilityId, int $fromStopId, int $toStopId, string $category = 'adult'): array
+    {
+        return [
             'contact' => [
                 'ct_name' => 'Rizky',
                 'ct_email' => 'rizky@example.com',
                 'ct_phone' => '081234567890',
                 'ct_nationality' => 'Indonesia',
             ],
-            'availability_id' => $availability->availability_id,
-            'user_id' => null,
+            'availability_id' => $availabilityId,
             'booking' => [
-                'bk_notes' => 'Jaga kursi 1',
-                'bk_adult_count' => 1,
-                'bk_child_count' => 0,
-                'bk_infant_count' => 0,
-                'bk_net_price' => 120000,
-                'bk_publish_price' => 120000,
-                'bk_total_price' => 120000,
-                'bk_status' => 'pending',
+                'bk_notes' => 'Uji booking',
             ],
             'passengers' => [
                 [
-                    'seat_id' => $seat->seat_id,
-                    'ps_category' => 'adult',
+                    'from_stop_id' => $fromStopId,
+                    'to_stop_id' => $toStopId,
+                    'ps_category' => $category,
                     'ps_name' => 'Rizky',
-                    'ps_age' => 28,
+                    'ps_age' => $category === 'infant' ? 0 : 28,
                     'ps_gender' => 'male',
                     'ps_nationality' => 'Indonesia',
                 ],
             ],
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonPath('message', 'Booking berhasil dibuat.')
-            ->assertJsonStructure([
-                'message',
-                'data' => [
-                    'booking_code',
-                    'booking_id',
-                ],
-            ]);
+        ];
     }
 }

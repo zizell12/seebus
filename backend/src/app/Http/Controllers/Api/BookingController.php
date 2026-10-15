@@ -35,12 +35,12 @@ class BookingController extends Controller
             'availability_id' => 'required|exists:availability,availability_id',
             'booking' => 'required|array',
             'booking.bk_notes' => 'nullable|string',
-            'passengers' => 'required|array|min:1',
+            'passengers' => 'required|array|min:1|max:10',
             'passengers.*.from_stop_id' => 'required|integer|exists:route_stop,route_stop_id',
             'passengers.*.to_stop_id' => 'required|integer|exists:route_stop,route_stop_id',
             'passengers.*.ps_category' => 'required|in:adult,child,infant',
             'passengers.*.ps_name' => 'required|string|max:100',
-            'passengers.*.ps_age' => 'required|integer|min:0',
+            'passengers.*.ps_age' => 'required|integer|min:0|max:120',
             'passengers.*.ps_gender' => 'required|in:male,female',
             'passengers.*.ps_nationality' => 'nullable|string|max:50',
         ]);
@@ -247,6 +247,13 @@ class BookingController extends Controller
         }
 
         $availability = $booking->availability;
+        $pembatalan = $booking->bk_status === 'cancelled' ? [
+            'refund_persen' => (int) $booking->bk_refund_percent,
+            'refund_jumlah' => (float) $booking->bk_refund_amount,
+            'refund_usd' => $booking->bk_refund_usd !== null ? (float) $booking->bk_refund_usd : null,
+            'refund_id' => $booking->bk_paypal_refund_id,
+            'sudah_dibayar' => ! empty($booking->bk_paid_at) || ! empty($booking->bk_paypal_capture_id),
+        ] : null;
 
         return response()->json([
             'data' => [
@@ -256,6 +263,7 @@ class BookingController extends Controller
                 'bk_publish_price' => (float) $booking->bk_publish_price,
                 'bk_total_price' => (float) $booking->bk_total_price,
                 'biaya_layanan' => (float) $booking->bk_total_price - (float) $booking->bk_publish_price,
+                'pembatalan' => $pembatalan,
                 'berlaku_sampai' => $booking->bk_hold_until,
                 'jadwal' => $availability ? [
                     'availability_id' => $availability->availability_id,

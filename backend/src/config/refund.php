@@ -1,8 +1,7 @@
 <?php
 
 return [
-    'mode' => env('REFUND_MODE', 'kebijakan'),
-    'policy_percent' => (int) env('REFUND_POLICY_PERCENT', 75),
-    'policy_window_hours' => (int) env('REFUND_POLICY_WINDOW_HOURS', 24),
-    'full_refund_percent' => (int) env('REFUND_FULL_PERCENT', 100),
+    'threshold_hours' => (int) env('REFUND_THRESHOLD_HOURS', 24),
+    'percent_before_threshold' => (int) env('REFUND_PERCENT', 75),
+    'percent_within_threshold' => (int) env('REFUND_PERCENT_WITHIN_THRESHOLD', 0),
 ];

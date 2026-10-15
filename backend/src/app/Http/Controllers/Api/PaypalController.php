@@ -210,7 +210,14 @@ class PaypalController extends Controller
                 throw new \RuntimeException('Pembayaran belum selesai.');
             }
 
-            $lockedBooking->update(['bk_status' => 'paid', 'bk_paid_at' => now()]);
+            $captureId = data_get($captureData, 'purchase_units.0.payments.captures.0.id');
+            $paidUsd = data_get($captureData, 'purchase_units.0.payments.captures.0.amount.value');
+            $lockedBooking->update([
+                'bk_status' => 'paid',
+                'bk_paid_at' => now(),
+                'bk_paypal_capture_id' => $captureId,
+                'bk_paid_usd' => $paidUsd,
+            ]);
 
             return [$captureData, true];
         });

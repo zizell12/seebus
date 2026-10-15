@@ -338,6 +338,37 @@ export const api = {
     })
     return handleResponse(res)
   },
+  getAdminBooking: async ({ status, q, page } = {}) => {
+    const params = new URLSearchParams()
+    if (status) params.set('status', status)
+    if (q) params.set('q', q)
+    if (page) params.set('page', page)
+    const res = await apiFetch(`${API_URL}/admin/booking?${params}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminBookingDetail: async (id) => {
+    const res = await apiFetch(`${API_URL}/admin/booking/${id}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  cancelAdminBooking: async (id, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/booking/${id}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
   getBookingRekap: async ({ mode, dari, sampai } = {}) => {
     const params = new URLSearchParams()
     if (mode) params.set('mode', mode)
