@@ -21,6 +21,7 @@ import AdminTipeBusForm from './pages/admin/AdminTipeBusForm'
 import AdminArmada from './pages/admin/AdminArmada'
 import AdminArmadaForm from './pages/admin/AdminArmadaForm'
 import AdminBooking from './pages/admin/AdminBooking'
+import AdminManifest from './pages/admin/AdminManifest'
 import AdminRekap from './pages/admin/AdminRekap'
 import AdminRute from './pages/admin/AdminRute'
 import AdminRuteForm from './pages/admin/AdminRuteForm'
@@ -81,6 +82,7 @@ export default function App() {
       >
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/jadwal" element={<AdminJadwal />} />
+        <Route path="/admin/jadwal/:id/manifest" element={<AdminManifest />} />
         <Route path="/admin/jadwal/tambah" element={<AdminJadwalForm />} />
         <Route path="/admin/jadwal/generate" element={<AdminJadwalGenerate />} />
         <Route path="/admin/jadwal/edit/:id" element={<AdminJadwalForm />} />

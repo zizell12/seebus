@@ -4,7 +4,7 @@ Isi folder ini:
 ```
 app/Http/Controllers/Api/
   AuthController.php       <- register, login, logout, me
-  JadwalController.php     <- cari jadwal bus, ambil layout kursi
+  JadwalController.php     <- cari jadwal bus, titik pemberhentian, dan SeatMap
   WilayahController.php    <- daftar kota
   PesanController.php      <- simpan pesan dari form "Hubungi Kami"
 app/Models/
@@ -38,8 +38,9 @@ routes/
    ```powershell
    docker exec -it seebus_app php artisan route:list --path=api
    ```
-   Harusnya muncul semua endpoint: `/api/register`, `/api/login`, `/api/wilayah`,
-   `/api/jadwal`, `/api/jadwal/{id}/kursi`, `/api/pesan`, dll.
+   Harusnya muncul semua endpoint: `/api/login`, `/api/wilayah`, `/api/jadwal`,
+   `/api/jadwal/{id}/seat-map`, `/api/pesan`, dll. SeatMap tersedia untuk kelas
+   Eksekutif dan Sleeper; manifest paid tersedia melalui endpoint admin.
 
 ## Cara test API (tanpa perlu frontend dulu)
 

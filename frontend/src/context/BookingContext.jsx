@@ -15,6 +15,7 @@ const initialState = {
   selectedBus: null,
   booking_id: null,
   booking_code: null,
+  pendingBooking: null,
   harga: null,
   selectedStops: null, // { from_stop_id, to_stop_id, fromName, toName }
   passengers: [],
@@ -94,6 +95,11 @@ export function BookingProvider({ children }) {
       ...b,
       booking_code: bookingCode,
     }))
+  const setPendingBooking = (pendingBooking) =>
+    saveBooking((b) => ({
+      ...b,
+      pendingBooking,
+    }))
   const setHarga = (harga) =>
     saveBooking((b) => ({
       ...b,
@@ -123,6 +129,11 @@ export function BookingProvider({ children }) {
       ...b,
       booking_id: data.booking_id,
       booking_code: data.bk_code,
+      pendingBooking: data.bk_status === 'pending' ? {
+        bk_code: data.bk_code,
+        email: data.contact?.ct_email ?? '',
+        expiresAt: data.berlaku_sampai ?? null,
+      } : null,
       search: {
         ...b.search,
         dari: data.jadwal?.dari ?? '',
@@ -133,6 +144,8 @@ export function BookingProvider({ children }) {
         jamBerangkat: data.jadwal?.jam_berangkat ?? '',
         jamTiba: '',
         kelas: data.jadwal?.kelas ?? '',
+        pakaiNomorKursi: Boolean(data.jadwal?.pakai_nomor_kursi),
+        polaKursi: data.jadwal?.pola_kursi ?? '2-2',
       },
       selectedStops: {
         fromName: data.passengers?.[0]?.naik_dari ?? '',
@@ -144,6 +157,7 @@ export function BookingProvider({ children }) {
         umur: p.ps_age,
         jenisKelamin: p.ps_gender,
         kewarganegaraan: p.ps_nationality,
+        ps_seat_number: p.ps_seat_number,
       })),
       contact: {
         nama: data.contact?.ct_name ?? '',
@@ -168,6 +182,7 @@ export function BookingProvider({ children }) {
         setContact,
         setBookingId,
         setBookingCode,
+        setPendingBooking,
         setHarga,
         setNotes,
         setPayment,

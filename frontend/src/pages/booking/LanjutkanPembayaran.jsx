@@ -22,6 +22,8 @@ export default function LanjutkanPembayaran() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [info, setInfo] = useState(null)
+  const [paidPassengers, setPaidPassengers] = useState(null)
+  const [seatNumbered, setSeatNumbered] = useState(false)
 
   const id = lang !== 'en'
 
@@ -35,6 +37,8 @@ export default function LanjutkanPembayaran() {
 
       if (data.bk_status === 'paid') {
         clearPendingBooking()
+        setPaidPassengers(data.passengers || [])
+        setSeatNumbered(Boolean(data.jadwal?.pakai_nomor_kursi))
         setInfo(
           id
             ? 'Booking ini sudah dibayar. Tidak perlu membayar lagi.'
@@ -167,6 +171,25 @@ export default function LanjutkanPembayaran() {
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{info}</span>
             </div>
+          )}
+          {paidPassengers && (
+            <section className="rounded-lg border border-gray-100 p-3">
+              <h2 className="mb-2 text-sm font-bold text-navy-900">{t.seatLabels.passengerSeats}</h2>
+              <div className="space-y-2">
+                {paidPassengers.map((passenger, index) => (
+                  <div key={index} className="flex justify-between gap-3 text-sm">
+                    <span>{passenger.ps_name}</span>
+                    <span className="font-semibold text-navy-900">
+                      {passenger.ps_category === 'infant'
+                        ? t.seatLabels.infantNoSeat
+                        : passenger.ps_seat_number
+                        ? `${t.seatLabels.seat} ${passenger.ps_seat_number.toUpperCase()}`
+                        : seatNumbered ? t.seatLabels.unassigned : t.seatLabels.free}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
 
           <button

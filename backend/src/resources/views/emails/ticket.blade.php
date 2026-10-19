@@ -114,6 +114,7 @@
                                 <tr>
                                     <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; border-radius:6px 0 0 0;">NAMA</td>
                                     <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; text-align:center;">NAIK - TURUN</td>
+                                    <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; text-align:center;">KURSI</td>
                                     <td style="padding:8px 10px; background-color:#0F2A66; color:#ffffff; font-size:11px; font-weight:700; text-align:center; border-radius:0 6px 0 0;">KATEGORI</td>
                                 </tr>
                                 @foreach ($booking->passengers as $index => $passenger)
@@ -121,6 +122,13 @@
                                         <td style="padding:10px; border-bottom:1px solid #edf0f5; font-weight:600;">{{ $passenger->ps_name }}</td>
                                         <td style="padding:10px; border-bottom:1px solid #edf0f5; text-align:center; font-size:12px; color:#0F2A66; font-weight:600;">
                                             {{ $passenger->fromStop?->station?->stn_name ?? '-' }} &rarr; {{ $passenger->toStop?->station?->stn_name ?? '-' }}
+                                        </td>
+                                        <td style="padding:10px; border-bottom:1px solid #edf0f5; text-align:center; font-weight:700;">
+                                            {{ $passenger->ps_category === 'infant'
+                                                ? 'Tidak mendapat kursi'
+                                                : ($booking->availability?->busUnit?->busType?->bt_use_seat_number
+                                                    ? ($passenger->ps_seat_number ? strtoupper($passenger->ps_seat_number) : 'Belum ditentukan')
+                                                    : 'Duduk bebas') }}
                                         </td>
                                         <td style="padding:10px; border-bottom:1px solid #edf0f5; text-align:center; text-transform:capitalize; color:#4b5563;">{{ $passenger->ps_category }}</td>
                                     </tr>

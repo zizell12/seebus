@@ -64,7 +64,10 @@ trait BuildsBookingFixtures
         ]);
 
         $company = Company::firstOrCreate(['co_name' => 'po uji'], ['co_address' => 'Jl. Uji', 'co_phone' => '0811', 'co_email' => 'po@example.com']);
-        $busType = BusType::firstOrCreate(['company_id' => $company->company_id, 'bt_name' => 'eksekutif'], ['bt_capacity' => 32]);
+        $busType = BusType::firstOrCreate(
+            ['company_id' => $company->company_id, 'bt_name' => 'eksekutif'],
+            ['bt_capacity' => 32, 'bt_use_seat_number' => true, 'bt_seat_pattern' => '2-2'],
+        );
         $busUnit = BusUnit::firstOrCreate(['bus_type_id' => $busType->bus_type_id, 'bu_code' => 'uji unit 1'], ['bu_capacity' => 32, 'is_active' => true]);
 
         $availability = Availability::create([

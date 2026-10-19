@@ -10,6 +10,7 @@ import {
   X,
   ArrowRight,
   SlidersHorizontal,
+  ClipboardList,
 } from 'lucide-react'
 import { api } from '../../utils/api'
 import { useLanguage } from '../../context/LanguageContext'
@@ -409,6 +410,12 @@ export default function AdminJadwal() {
                     </td>
                     <td className="py-3 pr-0">
                       <div className="flex items-center justify-end gap-1.5">
+                        <Link
+                          to={`/admin/jadwal/${item.availability_id}/manifest`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-navy-900 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50"
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" /> Manifest
+                        </Link>
                         <Link
                           to={`/admin/jadwal/edit/${item.availability_id}`}
                           state={{ item }}

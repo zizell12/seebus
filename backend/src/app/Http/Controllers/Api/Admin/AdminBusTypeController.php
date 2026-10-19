@@ -56,6 +56,8 @@ class AdminBusTypeController extends Controller
             'company_id' => $bt->company_id,
             'company_name' => $bt->company->co_name,
             'bt_name' => $bt->bt_name,
+            'bt_use_seat_number' => (bool) $bt->bt_use_seat_number,
+            'bt_seat_pattern' => $bt->bt_seat_pattern,
             'jumlah_armada' => $bt->bus_units_count,
         ]);
 
@@ -81,11 +83,15 @@ class AdminBusTypeController extends Controller
             'company_id' => 'nullable|integer|exists:company,company_id',
             'company_name' => 'nullable|string|max:150',
             'bt_name' => 'required|string|max:100',
+            'bt_use_seat_number' => 'sometimes|boolean',
+            'bt_seat_pattern' => 'nullable|in:2-2,1-2',
         ]);
 
         $busType = BusType::create([
             'company_id' => $this->resolveCompanyId($data),
             'bt_name' => $data['bt_name'],
+            'bt_use_seat_number' => $data['bt_use_seat_number'] ?? false,
+            'bt_seat_pattern' => $data['bt_seat_pattern'] ?? null,
         ]);
 
         return response()->json([
@@ -106,11 +112,27 @@ class AdminBusTypeController extends Controller
             'company_id' => 'nullable|integer|exists:company,company_id',
             'company_name' => 'nullable|string|max:150',
             'bt_name' => 'required|string|max:100',
+            'bt_use_seat_number' => 'sometimes|boolean',
+            'bt_seat_pattern' => 'nullable|in:2-2,1-2',
         ]);
+
+        $seatConfig = [
+            'bt_use_seat_number' => $data['bt_use_seat_number'] ?? $busType->bt_use_seat_number,
+            'bt_seat_pattern' => $data['bt_seat_pattern'] ?? $busType->bt_seat_pattern,
+        ];
+        $seatConfigChanged = (bool) $seatConfig['bt_use_seat_number'] !== (bool) $busType->bt_use_seat_number
+            || $seatConfig['bt_seat_pattern'] !== $busType->bt_seat_pattern;
+
+        if ($seatConfigChanged && $this->hasUpcomingBookings($busType)) {
+            return response()->json([
+                'message' => 'Pengaturan nomor/pola kursi tidak dapat diubah karena kelas ini dipakai jadwal mendatang yang memiliki booking pending atau paid.',
+            ], 422);
+        }
 
         $busType->update([
             'company_id' => $this->resolveCompanyId($data),
             'bt_name' => $data['bt_name'],
+            ...$seatConfig,
         ]);
 
         return response()->json([
@@ -139,5 +161,25 @@ class AdminBusTypeController extends Controller
         return response()->json([
             'message' => 'Kelas bus berhasil dihapus.',
         ]);
+    }
+
+    private function hasUpcomingBookings(BusType $busType): bool
+    {
+        $today = now()->toDateString();
+        $time = now()->format('H:i:s');
+
+        return $busType->busUnits()
+            ->whereHas('availabilities', fn ($query) => $query
+                ->where(fn ($dateQuery) => $dateQuery
+                    ->where('av_date', '>', $today)
+                    ->orWhere(fn ($todayQuery) => $todayQuery
+                        ->where('av_date', $today)
+                        ->where('av_time', '>', $time)))
+                ->whereHas('bookings', fn ($bookingQuery) => $bookingQuery
+                    ->where('bk_status', 'paid')
+                    ->orWhere(fn ($pendingQuery) => $pendingQuery
+                        ->where('bk_status', 'pending')
+                        ->where('bk_hold_until', '>', now()))))
+            ->exists();
     }
 }

@@ -120,6 +120,7 @@ class BookingApiTest extends TestCase
                     'ps_age' => $category === 'infant' ? 0 : 28,
                     'ps_gender' => 'male',
                     'ps_nationality' => 'Indonesia',
+                    'ps_seat_number' => $category === 'infant' ? null : '1A',
                 ],
             ],
         ];

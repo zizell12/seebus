@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
+use App\Models\RouteStop;
+use App\Services\BookingHoldExpiry;
 use App\Services\RouteFareCalculator;
+use App\Services\SeatMap;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,11 +48,16 @@ class JadwalController extends Controller
             return $berangkat->greaterThan(now());
         })->values();
 
+        app(BookingHoldExpiry::class)->releaseExpiredForAvailabilityIds(
+            $jadwal->pluck('availability_id')->all(),
+        );
+
         $result = $jadwal->map(function ($item) {
             // Stok yang ditampilkan di kartu hasil pencarian adalah stok
             // buat perjalanan PENUH (dari titik paling awal ke titik paling
             // akhir) -- yaitu etape yang paling "penuh" di antara semua
             // etape, karena itu yang jadi batas sebenarnya.
+            $item->load('legs');
             $terpakaiPalingBanyak = $item->legs->max('seats_booked') ?? 0;
             $kursiTersedia = max(0, $item->av_seats - $terpakaiPalingBanyak);
 
@@ -62,6 +70,8 @@ class JadwalController extends Controller
                 'availability_id' => $item->availability_id,
                 'operator' => $item->busUnit->busType->company->co_name,
                 'kategori' => $item->busUnit->busType->bt_name,
+                'pakai_nomor_kursi' => (bool) $item->busUnit->busType->bt_use_seat_number,
+                'pola_kursi' => $item->busUnit->busType->bt_seat_pattern ?: '2-2',
                 'armada' => $item->busUnit->bu_code,
                 'fasilitas' => $item->busUnit->bu_facilities ?? [],
                 'dari' => $item->route->originStation->region->rg_city,
@@ -90,17 +100,18 @@ class JadwalController extends Controller
      * Daftar titik naik & titik turun yang bisa dipilih penumpang untuk satu
      * jadwal, lengkap dengan sisa stok dan harga (dari titik itu sampai
      * tujuan akhir) -- dipakai di halaman pemesanan sebelum isi data
-     * penumpang. ALIH-ALIH peta kursi (sudah tidak ada nomor kursi lagi).
+     * penumpang.
      */
     public function titikPemberhentian(int $id): JsonResponse
     {
-        $availability = Availability::with(['route.stops.station', 'legs'])->findOrFail($id);
+        app(BookingHoldExpiry::class)->releaseExpiredForAvailabilityIds([$id]);
+        $availability = Availability::with(['route.stops.station', 'legs', 'busUnit.busType'])->findOrFail($id);
 
         $legByStopId = $availability->legs->keyBy('route_stop_id');
         $stops = $availability->route->stops; // sudah terurut stop_order
         $titikAkhir = $stops->last();
 
-        $data = $stops->map(function ($stop) use ($legByStopId, $availability, $stops, $titikAkhir) {
+        $data = $stops->map(function ($stop) use ($legByStopId, $availability, $titikAkhir) {
             $isTitikAkhir = $stop->route_stop_id === $titikAkhir->route_stop_id;
 
             // Etape yang harus dilewati kalau naik DARI titik ini sampai
@@ -128,6 +139,64 @@ class JadwalController extends Controller
             ];
         });
 
-        return response()->json(['data' => $data]);
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'pakai_nomor_kursi' => (bool) $availability->busUnit?->busType?->bt_use_seat_number,
+                'pola_kursi' => $availability->busUnit?->busType?->bt_seat_pattern ?: '2-2',
+            ],
+        ]);
+    }
+
+    public function seatMap(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'from_stop_id' => 'required|integer|exists:route_stop,route_stop_id',
+            'to_stop_id' => 'required|integer|exists:route_stop,route_stop_id',
+        ]);
+
+        $availability = Availability::with('busUnit.busType')->findOrFail($id);
+        if (! SeatMap::supportsNumberedSeats($availability)) {
+            return response()->json([
+                'message' => 'Nomor kursi hanya tersedia untuk kelas Eksekutif dan Sleeper.',
+            ], 422);
+        }
+
+        $stops = RouteStop::where('route_id', $availability->route_id)
+            ->whereIn('route_stop_id', [$data['from_stop_id'], $data['to_stop_id']])
+            ->get()
+            ->keyBy('route_stop_id');
+
+        if (
+            $stops->count() !== 2
+            || $stops->get($data['from_stop_id'])->stop_order >= $stops->get($data['to_stop_id'])->stop_order
+        ) {
+            return response()->json([
+                'message' => 'Titik naik dan turun tidak valid untuk jadwal ini.',
+            ], 422);
+        }
+
+        $occupiedSeats = SeatMap::reservedSeatNumbers(
+            $availability,
+            $stops->get($data['from_stop_id'])->stop_order,
+            $stops->get($data['to_stop_id'])->stop_order,
+        );
+        $pattern = $availability->busUnit->busType->bt_seat_pattern ?: '2-2';
+        $leftCount = (int) explode('-', $pattern)[0];
+        $rows = collect(SeatMap::seatRows($availability->av_seats, $pattern))
+            ->map(fn ($row) => collect($row)->values()->map(fn ($seatNumber, $index) => [
+                'seat_number' => $seatNumber,
+                'available' => ! in_array($seatNumber, $occupiedSeats, true),
+                'grid_column' => $index < $leftCount ? $index + 1 : $index + 3,
+            ]));
+
+        return response()->json([
+            'data' => [
+                'kelas' => $availability->busUnit->busType->bt_name,
+                'pola_kursi' => $pattern,
+                'seats' => $rows->flatten(1)->values(),
+                'rows' => $rows->values(),
+            ],
+        ]);
     }
 }

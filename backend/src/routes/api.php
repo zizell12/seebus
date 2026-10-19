@@ -1,15 +1,17 @@
 <?php
 
-use App\Http\Controllers\Api\Admin\AdminBusTypeController;
 use App\Http\Controllers\Api\Admin\AdminBookingController;
+use App\Http\Controllers\Api\Admin\AdminBusTypeController;
 use App\Http\Controllers\Api\Admin\AdminBusUnitController;
 use App\Http\Controllers\Api\Admin\AdminJadwalController;
+use App\Http\Controllers\Api\Admin\AdminManifestController;
 use App\Http\Controllers\Api\Admin\AdminPesanController;
 use App\Http\Controllers\Api\Admin\AdminRouteController;
 use App\Http\Controllers\Api\Admin\AdminRouteStopController;
 use App\Http\Controllers\Api\Admin\AdminStationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\CompanyController;
 use App\Http\Controllers\Api\JadwalController;
 use App\Http\Controllers\Api\PaypalController;
 use App\Http\Controllers\Api\PesanController;
@@ -54,6 +56,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/booking', [AdminBookingController::class, 'index']);
     Route::get('/booking/rekap', [AdminBookingController::class, 'rekap']);
     Route::get('/booking/export', [AdminBookingController::class, 'export']);
+    Route::get('/manifest/{availabilityId}/csv', [AdminManifestController::class, 'export'])->whereNumber('availabilityId');
+    Route::get('/manifest/{availabilityId}', [AdminManifestController::class, 'show'])->whereNumber('availabilityId');
     Route::get('/booking/{bookingId}', [AdminBookingController::class, 'show'])->whereNumber('bookingId');
     Route::post('/booking/{bookingId}/cancel', [AdminBookingController::class, 'cancel'])->whereNumber('bookingId');
 
@@ -79,6 +83,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 // Rate-limited supaya endpoint ini tidak dibanjiri booking palsu secara
 Route::post('/booking', [BookingController::class, 'store'])
     ->middleware('throttle:10,1');
+Route::post('/booking/release-pending', [BookingController::class, 'releasePending'])
+    ->middleware('throttle:10,1');
 
 Route::post('/paypal/create-order', [PaypalController::class, 'createOrder'])
     ->middleware('throttle:10,1');
@@ -95,11 +101,10 @@ Route::post('/booking/lookup', [BookingController::class, 'lookup'])
 // Data publik
 Route::get('/wilayah', [WilayahController::class, 'index']);
 Route::get('/jadwal', [JadwalController::class, 'index']);
-// Daftar titik naik/turun + sisa stok & harga untuk satu jadwal -- gantinya
-// endpoint peta kursi (/jadwal/{id}/kursi) yang sudah tidak relevan lagi
-// sejak nomor kursi dihapus (lihat poin 5 revisi: stok, bukan nomor kursi).
+// Titik naik/turun dan SeatMap tersedia sebagai tahap terpisah dalam checkout.
 Route::get('/jadwal/{id}/titik-pemberhentian', [JadwalController::class, 'titikPemberhentian']);
-Route::get('/company-profile', [\App\Http\Controllers\Api\CompanyController::class, 'show']);
+Route::get('/jadwal/{id}/seat-map', [JadwalController::class, 'seatMap']);
+Route::get('/company-profile', [CompanyController::class, 'show']);
 
 // Kontak. Rate-limited supaya form "Hubungi Kami" tidak dibanjiri pesan
 // spam otomatis.

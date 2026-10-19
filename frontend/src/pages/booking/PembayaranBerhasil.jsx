@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Mail } from 'lucide-react'
 import { useBooking } from '../../context/BookingContext'
+import { useLanguage } from '../../context/LanguageContext'
 import { api } from '../../utils/api'
 import { clearPendingBooking } from '../../utils/pendingBooking'
 
@@ -31,6 +32,16 @@ function isVerified(code) {
   return !!code && readVerified().includes(code)
 }
 
+function readTicketDetails(code) {
+  try {
+    const raw = sessionStorage.getItem(`${VERIFIED_KEY}_seats`)
+    const details = raw ? JSON.parse(raw) : []
+    return details.find((item) => item.code === code) || null
+  } catch {
+    return null
+  }
+}
+
 function saveVerified(code) {
   if (!code) return
   try {
@@ -42,12 +53,35 @@ function saveVerified(code) {
   }
 }
 
+function saveTicketDetails(code, data) {
+  if (!code) return
+  try {
+    const key = `${VERIFIED_KEY}_seats`
+    const raw = sessionStorage.getItem(key)
+    const items = raw ? JSON.parse(raw) : []
+    const next = items.filter((item) => item.code !== code)
+    next.push({
+      code,
+      numbered: Boolean(data.jadwal?.pakai_nomor_kursi),
+      passengers: (data.passengers || []).map((passenger) => ({
+        ps_category: passenger.ps_category,
+        ps_seat_number: passenger.ps_seat_number,
+      })),
+    })
+    sessionStorage.setItem(key, JSON.stringify(next.slice(-MAX_VERIFIED)))
+  } catch {
+    // Keep the verified-payment flow working when browser storage is unavailable.
+  }
+}
+
 export default function PembayaranBerhasil() {
   const { booking, resetBooking } = useBooking()
+  const { t } = useLanguage()
   const params = new URLSearchParams(window.location.search)
   const status = params.get('status')
   const bookingCode = params.get('booking_code')
   const [paymentVerified, setPaymentVerified] = useState(() => status === 'success' && isVerified(bookingCode))
+  const [ticketDetails, setTicketDetails] = useState(() => readTicketDetails(bookingCode))
   const [verificationError, setVerificationError] = useState(false)
   const isSuccess = status === 'success' && paymentVerified
 
@@ -64,6 +98,11 @@ export default function PembayaranBerhasil() {
       .then((data) => {
         if (!active) return
         if (data.bk_status === 'paid') {
+          saveTicketDetails(bookingCode, data)
+          setTicketDetails({
+            numbered: Boolean(data.jadwal?.pakai_nomor_kursi),
+            passengers: data.passengers || [],
+          })
           saveVerified(bookingCode)
           setPaymentVerified(true)
           clearPendingBooking()
@@ -112,6 +151,26 @@ export default function PembayaranBerhasil() {
           </div>
 
           {bookingCode && <p className="text-sm text-gray-600">Kode booking: <strong>{bookingCode}</strong></p>}
+
+          {isSuccess && ticketDetails?.passengers?.length > 0 && (
+            <section className="mt-5 text-left">
+              <h2 className="font-bold text-navy-900 mb-2">{t.seatLabels.passengerSeats}</h2>
+              <div className="space-y-2">
+                {ticketDetails.passengers.map((passenger, index) => (
+                  <div key={index} className="flex justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                    <span>{t.penumpangPage.penumpangKe} {index + 1}</span>
+                    <span className="font-semibold text-navy-900">
+                      {passenger.ps_category === 'infant'
+                        ? t.seatLabels.infantNoSeat
+                        : passenger.ps_seat_number
+                        ? `${t.seatLabels.seat} ${passenger.ps_seat_number.toUpperCase()}`
+                        : ticketDetails.numbered ? t.seatLabels.unassigned : t.seatLabels.free}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {unconfirmed && (
             <Link

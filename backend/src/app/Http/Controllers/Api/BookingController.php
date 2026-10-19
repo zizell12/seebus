@@ -9,10 +9,13 @@ use App\Models\AvailabilityLeg;
 use App\Models\Booking;
 use App\Models\Contact;
 use App\Models\RouteStop;
+use App\Services\BookingCancellationService;
+use App\Services\BookingHoldExpiry;
 use App\Services\RouteFareCalculator;
-use Illuminate\Support\Carbon;
+use App\Services\SeatMap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -21,7 +24,9 @@ use Illuminate\Validation\ValidationException;
 class BookingController extends Controller
 {
     private const KOMISI_PLATFORM = 0.10; // 10%
+
     private const BIAYA_LAYANAN = 5000; // Rp, flat per booking
+
     private const HOLD_MINUTES = 15;
 
     public function store(Request $request): JsonResponse
@@ -43,10 +48,11 @@ class BookingController extends Controller
             'passengers.*.ps_age' => 'required|integer|min:0|max:120',
             'passengers.*.ps_gender' => 'required|in:male,female',
             'passengers.*.ps_nationality' => 'nullable|string|max:50',
+            'passengers.*.ps_seat_number' => 'nullable|string|max:5',
         ]);
 
         [$booking, $responseData] = DB::transaction(function () use ($data, $request) {
-            $availability = Availability::with('busUnit')->findOrFail($data['availability_id']);
+            $availability = Availability::with('busUnit.busType')->findOrFail($data['availability_id']);
             $departure = Carbon::parse($availability->av_date->toDateString().' '.$availability->av_time, config('app.timezone'));
 
             if ($availability->av_status !== 'active' || $departure->lessThanOrEqualTo(now())) {
@@ -60,6 +66,10 @@ class BookingController extends Controller
                     'availability_id' => ['Armada pada jadwal ini sudah tidak aktif.'],
                 ]);
             }
+
+            app(BookingHoldExpiry::class)->releaseExpiredForAvailabilityIds([
+                $availability->availability_id,
+            ]);
 
             // Kunci semua baris availability_leg milik jadwal ini SEKARANG,
             // sebelum baca angka seats_booked-nya -- supaya kalau ada 2 orang
@@ -86,6 +96,28 @@ class BookingController extends Controller
                 ]);
             }
 
+            $firstPassenger = $data['passengers'][0];
+            foreach ($data['passengers'] as $passenger) {
+                if (
+                    $passenger['from_stop_id'] !== $firstPassenger['from_stop_id']
+                    || $passenger['to_stop_id'] !== $firstPassenger['to_stop_id']
+                ) {
+                    throw ValidationException::withMessages([
+                        'passengers' => ['Titik naik dan turun harus sama untuk semua penumpang dalam satu booking.'],
+                    ]);
+                }
+            }
+
+            $numberedSeats = SeatMap::supportsNumberedSeats($availability);
+            $requestedSeatNumbers = [];
+            $seatLabels = array_map(
+                'mb_strtoupper',
+                SeatMap::seatNumbers(
+                    $availability->av_seats,
+                    $availability->busUnit?->busType?->bt_seat_pattern,
+                ),
+            );
+
             // Hitung, per penumpang: etape mana aja yang dia lewatin + harga
             // sesuai kategorinya (dewasa/anak/bayi).
             $normalizedPassengers = [];
@@ -99,6 +131,35 @@ class BookingController extends Controller
                 if ($from->stop_order >= $to->stop_order) {
                     throw ValidationException::withMessages([
                         'passengers' => ['Titik turun harus berada setelah titik naik.'],
+                    ]);
+                }
+
+                $seatNumber = isset($passenger['ps_seat_number'])
+                    ? mb_strtoupper(trim($passenger['ps_seat_number']))
+                    : null;
+
+                if ($passenger['ps_category'] === 'infant' && $seatNumber !== null) {
+                    throw ValidationException::withMessages([
+                        'passengers' => ['Bayi tidak mendapat nomor kursi.'],
+                    ]);
+                }
+
+                if ($passenger['ps_category'] !== 'infant' && $numberedSeats) {
+                    if ($seatNumber === null || ! in_array($seatNumber, $seatLabels, true)) {
+                        throw ValidationException::withMessages([
+                            'passengers' => ['Pilih nomor kursi yang tersedia pada denah.'],
+                        ]);
+                    }
+
+                    if (in_array($seatNumber, $requestedSeatNumbers, true)) {
+                        throw ValidationException::withMessages([
+                            'passengers' => ['Setiap penumpang harus memilih nomor kursi yang berbeda.'],
+                        ]);
+                    }
+                    $requestedSeatNumbers[] = $seatNumber;
+                } elseif ($seatNumber !== null) {
+                    throw ValidationException::withMessages([
+                        'passengers' => ['Nomor kursi hanya berlaku untuk penumpang non-bayi di kelas Eksekutif dan Sleeper.'],
                     ]);
                 }
 
@@ -116,7 +177,24 @@ class BookingController extends Controller
                 $hargaPenumpang = (float) ($harga[$passenger['ps_category']] ?? 0);
                 $totalHarga += $hargaPenumpang;
 
-                $normalizedPassengers[] = array_merge($passenger, ['harga' => $hargaPenumpang]);
+                $normalizedPassengers[] = array_merge($passenger, [
+                    'harga' => $hargaPenumpang,
+                    'ps_seat_number' => $seatNumber,
+                ]);
+            }
+
+            if ($requestedSeatNumbers !== []) {
+                $occupiedSeats = SeatMap::reservedSeatNumbers(
+                    $availability,
+                    $stops->get($firstPassenger['from_stop_id'])->stop_order,
+                    $stops->get($firstPassenger['to_stop_id'])->stop_order,
+                );
+
+                if (array_intersect($requestedSeatNumbers, $occupiedSeats) !== []) {
+                    throw ValidationException::withMessages([
+                        'passengers' => ['Salah satu nomor kursi baru saja dipesan untuk etape perjalanan ini. Pilih kursi lain.'],
+                    ]);
+                }
             }
 
             // Cek stok: buat tiap etape yang kepakai, pastikan
@@ -186,6 +264,7 @@ class BookingController extends Controller
                     'ps_age' => $passenger['ps_age'],
                     'ps_gender' => $passenger['ps_gender'],
                     'ps_nationality' => $passenger['ps_nationality'] ?? 'Indonesia',
+                    'ps_seat_number' => $passenger['ps_seat_number'],
                 ]);
             }
 
@@ -217,6 +296,58 @@ class BookingController extends Controller
         }
 
         return response()->json($responseData, 201);
+    }
+
+    public function releasePending(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'bk_code' => 'required|string|max:20',
+            'email' => 'required|email|max:100',
+        ]);
+
+        $booking = Booking::query()
+            ->where('bk_code', strtoupper(trim($data['bk_code'])))
+            ->whereHas('contact', fn ($query) => $query
+                ->whereRaw('LOWER(ct_email) = ?', [mb_strtolower($data['email'])]))
+            ->first();
+
+        if (! $booking) {
+            return response()->json([
+                'message' => 'Booking tidak ditemukan. Periksa kembali kode booking dan email Anda.',
+            ], 404);
+        }
+
+        $result = DB::transaction(function () use ($booking) {
+            $locked = Booking::whereKey($booking->booking_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->bk_status !== 'pending') {
+                return null;
+            }
+
+            return app(BookingCancellationService::class)->cancel(
+                $locked,
+                'Pelanggan membuat ulang booking.',
+                'kebijakan',
+                0,
+            );
+        });
+
+        if ($result === null) {
+            return response()->json([
+                'message' => 'Hanya booking pending yang dapat dilepas.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Booking pending dibatalkan dan kursi dilepas.',
+            'data' => [
+                'booking_id' => $booking->booking_id,
+                'bk_code' => $booking->bk_code,
+                'bk_status' => 'cancelled',
+            ],
+        ]);
     }
 
     public function lookup(Request $request): JsonResponse
@@ -272,6 +403,8 @@ class BookingController extends Controller
                     'tanggal' => optional($availability->av_date)->toDateString(),
                     'jam_berangkat' => substr((string) $availability->av_time, 0, 5),
                     'kelas' => $availability->busUnit?->busType?->bt_name,
+                    'pakai_nomor_kursi' => (bool) $availability->busUnit?->busType?->bt_use_seat_number,
+                    'pola_kursi' => $availability->busUnit?->busType?->bt_seat_pattern ?: '2-2',
                     'armada' => $availability->busUnit?->bu_code,
                 ] : null,
                 'passengers' => $booking->passengers->map(fn ($p) => [
@@ -280,6 +413,7 @@ class BookingController extends Controller
                     'ps_age' => $p->ps_age,
                     'ps_gender' => $p->ps_gender,
                     'ps_nationality' => $p->ps_nationality,
+                    'ps_seat_number' => $p->ps_seat_number === null ? null : mb_strtoupper($p->ps_seat_number),
                     'naik_dari' => $p->fromStop?->station?->stn_name,
                     'turun_di' => $p->toStop?->station?->stn_name,
                 ]),

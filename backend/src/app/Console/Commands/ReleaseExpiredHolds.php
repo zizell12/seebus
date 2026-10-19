@@ -3,9 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Booking;
-use App\Services\BookingStockReleaser;
+use App\Services\BookingHoldExpiry;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class ReleaseExpiredHolds extends Command
 {
@@ -30,32 +29,16 @@ class ReleaseExpiredHolds extends Command
 
     public function handle(): int
     {
-        $now = now();
-
         $bookingIds = Booking::query()
             ->where('bk_status', 'pending')
-            ->whereNotNull('bk_hold_until')
-            ->where('bk_hold_until', '<', $now)
-            ->pluck('booking_id');
-
-        $jumlahBooking = 0;
-
-        foreach ($bookingIds as $bookingId) {
-            DB::transaction(function () use ($bookingId, $now, &$jumlahBooking) {
-                $booking = Booking::with('passengers.fromStop', 'passengers.toStop')
-                    ->whereKey($bookingId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $booking || $booking->bk_status !== 'pending' || ! $booking->bk_hold_until || $booking->bk_hold_until->greaterThanOrEqualTo($now)) {
-                    return;
-                }
-
-                BookingStockReleaser::release($booking);
-                $booking->update(['bk_status' => 'expired']);
-                $jumlahBooking++;
-            });
-        }
+            ->where(function ($query) {
+                $query->whereNull('bk_hold_until')
+                    ->orWhere('bk_hold_until', '<=', now());
+            })
+            ->distinct()
+            ->pluck('availability_id')
+            ->all();
+        $jumlahBooking = app(BookingHoldExpiry::class)->releaseExpiredForAvailabilityIds($bookingIds);
 
         $this->info("Booking ditandai expired & stoknya dikembalikan: {$jumlahBooking}.");
 

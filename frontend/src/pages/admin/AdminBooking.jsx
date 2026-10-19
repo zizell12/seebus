@@ -127,7 +127,9 @@ export default function AdminBooking() {
                 {booking.penumpang.map((passenger, index) => (
                   <div key={`${passenger.ps_name}-${index}`} className="rounded-lg bg-gray-50 px-3 py-2 text-sm">
                     <p className="font-semibold text-navy-900">{passenger.ps_name} · {passenger.ps_category}</p>
-                    <p className="text-xs text-gray-500">{passenger.naik_dari} → {passenger.turun_di}</p>
+                    <p className="text-xs text-gray-500">
+                      {passenger.ps_seat_number ? `Kursi ${passenger.ps_seat_number} · ` : ''}{passenger.naik_dari} → {passenger.turun_di}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -199,6 +199,8 @@ export default function HasilPencarian() {
       id: bus.availability_id,
       operator: bus.operator,
       kelas: bus.kategori || bus.tipe,
+      pakaiNomorKursi: Boolean(bus.pakai_nomor_kursi),
+      polaKursi: bus.pola_kursi || '2-2',
       fasilitas: bus.fasilitas,
       dari: bus.dari,
       tujuan: bus.tujuan,

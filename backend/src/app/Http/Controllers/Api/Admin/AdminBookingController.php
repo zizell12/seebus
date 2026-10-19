@@ -70,6 +70,7 @@ class AdminBookingController extends Controller
             && $booking->availability
             && ! RefundPolicy::departure($booking)->isPast();
         $refund = $canCancel && $booking->bk_status === 'paid' ? $this->refundPreview($booking) : null;
+
         return response()->json([
             'data' => [
                 'booking_id' => $booking->booking_id,
@@ -96,6 +97,7 @@ class AdminBookingController extends Controller
                 'penumpang' => $booking->passengers->map(fn ($p) => [
                     'ps_name' => $p->ps_name,
                     'ps_category' => $p->ps_category,
+                    'ps_seat_number' => $p->ps_seat_number === null ? null : mb_strtoupper($p->ps_seat_number),
                     'naik_dari' => $p->fromStop?->station?->stn_name,
                     'turun_di' => $p->toStop?->station?->stn_name,
                 ]),

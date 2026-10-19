@@ -79,6 +79,7 @@ class BookingPassengerLimitTest extends TestCase
                 'ps_age' => 28,
                 'ps_gender' => 'male',
                 'ps_nationality' => 'Indonesia',
+                'ps_seat_number' => '1A',
             ]],
         ];
     }

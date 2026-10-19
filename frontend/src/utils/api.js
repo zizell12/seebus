@@ -56,6 +56,12 @@ export const api = {
   getTitikPemberhentian: async (availabilityId) => {
     const res = await apiFetch(`${API_URL}/jadwal/${availabilityId}/titik-pemberhentian`)
     const json = await handleResponse(res)
+    return { stops: json.data, ...json.meta }
+  },
+  getSeatMap: async (availabilityId, { from_stop_id, to_stop_id }) => {
+    const params = new URLSearchParams({ from_stop_id, to_stop_id })
+    const res = await apiFetch(`${API_URL}/jadwal/${availabilityId}/seat-map?${params}`)
+    const json = await handleResponse(res)
     return json.data
   },
   kirimPesan: async ({ nama, email, subjek, pesan }) => {
@@ -110,6 +116,16 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  releasePendingBooking: async ({ bk_code, email }) => {
+    const res = await apiFetch(`${API_URL}/booking/release-pending`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ bk_code, email }),
     })
     return handleResponse(res)
   },
@@ -352,6 +368,31 @@ export const api = {
   },
   getAdminBookingDetail: async (id) => {
     const res = await apiFetch(`${API_URL}/admin/booking/${id}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  getAdminManifest: async (availabilityId) => {
+    const res = await apiFetch(`${API_URL}/admin/manifest/${availabilityId}`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    return handleResponse(res)
+  },
+  downloadAdminManifestCsv: async (availabilityId) => {
+    const res = await apiFetch(`${API_URL}/admin/manifest/${availabilityId}/csv`, {
+      headers: {
+        ...authHeaders(),
+      },
+    })
+    if (!res.ok) return handleResponse(res)
+    return res.blob()
+  },
+  getAdminManifest: async (availabilityId) => {
+    const res = await apiFetch(`${API_URL}/admin/manifest/${availabilityId}`, {
       headers: {
         ...authHeaders(),
       },

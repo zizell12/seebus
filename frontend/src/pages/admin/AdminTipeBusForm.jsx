@@ -100,6 +100,8 @@ export default function AdminTipeBusForm() {
   const [companyId, setCompanyId] = useState(initial?.company_id ? String(initial.company_id) : '')
   const [companyName, setCompanyName] = useState(initial?.company_name || '')
   const [namaTipe, setNamaTipe] = useState(initial?.bt_name || '')
+  const [pakaiNomorKursi, setPakaiNomorKursi] = useState(Boolean(initial?.bt_use_seat_number))
+  const [polaKursi, setPolaKursi] = useState(initial?.bt_seat_pattern || '2-2')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -134,6 +136,8 @@ export default function AdminTipeBusForm() {
     setError('')
     const payload = {
       bt_name: namaTipe,
+      bt_use_seat_number: pakaiNomorKursi,
+      bt_seat_pattern: pakaiNomorKursi ? polaKursi : null,
       ...(companyId ? { company_id: Number(companyId) } : { company_name: companyName.trim() }),
     }
     try {
@@ -167,6 +171,29 @@ export default function AdminTipeBusForm() {
           <ArrowLeft className="w-4 h-4" /> {t.adminTipeBusPage.kembali}
         </Link>
       </div>
+
+      <label className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm text-navy-900">
+        <input
+          type="checkbox"
+          checked={pakaiNomorKursi}
+          onChange={(event) => setPakaiNomorKursi(event.target.checked)}
+          className="h-4 w-4 accent-navy-900"
+        />
+        <span>{t.adminTipeBusPage.pakaiNomorKursi}</span>
+      </label>
+      {pakaiNomorKursi && (
+        <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminTipeBusPage.polaKursi}</label>
+          <select
+            value={polaKursi}
+            onChange={(event) => setPolaKursi(event.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-navy-900/20"
+          >
+            <option value="2-2">2-2 · Eksekutif</option>
+            <option value="1-2">1-2 · Sleeper</option>
+          </select>
+        </div>
+      )}
 
       {error && (
         <div className="text-sm text-brand-red bg-brand-red/5 border border-brand-red/20 rounded-lg px-4 py-2.5 mb-5">

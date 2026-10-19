@@ -90,6 +90,11 @@ class AdminBusUnitController extends Controller
         $busUnit = BusUnit::findOrFail($id);
 
         $data = $this->validateData($request);
+        if ((int) $data['bu_capacity'] !== (int) $busUnit->bu_capacity && $this->hasUpcomingBookings($busUnit)) {
+            return response()->json([
+                'message' => 'Kapasitas armada tidak dapat diubah karena memiliki jadwal mendatang dengan booking pending atau paid.',
+            ], 422);
+        }
         $busUnit->update($data);
 
         return response()->json([
@@ -98,7 +103,6 @@ class AdminBusUnitController extends Controller
         ]);
     }
 
-    
     public function toggleStatus(int $id): JsonResponse
     {
         $busUnit = BusUnit::findOrFail($id);
@@ -147,6 +151,25 @@ class AdminBusUnitController extends Controller
         $data['bu_facilities'] = $data['bu_facilities'] ?? [];
 
         return $data;
+    }
+
+    private function hasUpcomingBookings(BusUnit $busUnit): bool
+    {
+        $today = now()->toDateString();
+        $time = now()->format('H:i:s');
+
+        return $busUnit->availabilities()
+            ->where(fn ($dateQuery) => $dateQuery
+                ->where('av_date', '>', $today)
+                ->orWhere(fn ($todayQuery) => $todayQuery
+                    ->where('av_date', $today)
+                    ->where('av_time', '>', $time)))
+            ->whereHas('bookings', fn ($bookingQuery) => $bookingQuery
+                ->where('bk_status', 'paid')
+                ->orWhere(fn ($pendingQuery) => $pendingQuery
+                    ->where('bk_status', 'pending')
+                    ->where('bk_hold_until', '>', now())))
+            ->exists();
     }
 
     private function format(BusUnit $busUnit): array

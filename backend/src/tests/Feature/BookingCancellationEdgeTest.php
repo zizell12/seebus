@@ -206,9 +206,11 @@ class BookingCancellationEdgeTest extends TestCase
 
     public function test_release_expired_holds_memakai_pelepas_stok_yang_sama_dengan_pembatalan(): void
     {
-        $sumber = file_get_contents(base_path('app/Console/Commands/ReleaseExpiredHolds.php'));
+        $sumberCommand = file_get_contents(base_path('app/Console/Commands/ReleaseExpiredHolds.php'));
+        $sumberExpiry = file_get_contents(base_path('app/Services/BookingHoldExpiry.php'));
 
-        $this->assertStringContainsString('BookingStockReleaser', $sumber, 'logika stok tidak boleh ada dua salinan');
-        $this->assertStringNotContainsString('legsBetween', $sumber, 'ReleaseExpiredHolds tidak boleh menghitung etape sendiri');
+        $this->assertStringContainsString('BookingHoldExpiry', $sumberCommand, 'command memakai satu jalur expiry bersama');
+        $this->assertStringContainsString('BookingStockReleaser::release', $sumberExpiry, 'logika stok memakai pelepas yang sama dengan pembatalan');
+        $this->assertStringNotContainsString('legsBetween', $sumberCommand, 'ReleaseExpiredHolds tidak boleh menghitung etape sendiri');
     }
 }
