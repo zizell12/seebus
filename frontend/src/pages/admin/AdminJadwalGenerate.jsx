@@ -32,6 +32,9 @@ export default function AdminJadwalGenerate() {
     api.getAdminJadwalOptions().then(setOptions).catch(() => {})
   }, [])
 
+  const selectedRoute = options.routes.find((route) => String(route.route_id) === String(routeId))
+  const routeNotReady = selectedRoute?.siap_dipakai === false
+
   const toggleHari = (value) => {
     setHariTerpilih((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
@@ -71,7 +74,9 @@ export default function AdminJadwalGenerate() {
         jam: jamValid,
       })
       navigate('/admin/jadwal', {
-        state: { notice: t.adminJadwalPage.generateBerhasil.replace('{dibuat}', res.dibuat ?? 0) },
+        state: {
+          notice: `${t.adminJadwalPage.generateBerhasil.replace('{dibuat}', res.dibuat ?? 0)} Bentrok armada: ${res.bentrok ?? 0}; dilewati karena sudah ada: ${res.dilewati ?? 0}.`,
+        },
       })
     } catch (err) {
       setError(err.message)
@@ -101,6 +106,12 @@ export default function AdminJadwalGenerate() {
         </div>
       )}
 
+      {routeNotReady && (
+        <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-5">
+          {selectedRoute.masalah?.[0] || 'Rute belum siap untuk dijadwalkan.'} Perbaiki di menu Rute → Titik Pemberhentian.
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="card space-y-5 max-w-3xl">
         <div>
           <label className="text-xs font-semibold text-gray-500 mb-1 block">{t.adminJadwalPage.labelRute}</label>
@@ -113,7 +124,7 @@ export default function AdminJadwalGenerate() {
             <option value="">{t.adminJadwalPage.pilihRute}</option>
             {options.routes.map((r) => (
               <option key={r.route_id} value={r.route_id}>
-                {r.label}
+                {r.label}{r.siap_dipakai === false ? ` (${r.masalah?.[0] || 'belum siap'})` : ''}
               </option>
             ))}
           </select>
@@ -228,7 +239,7 @@ export default function AdminJadwalGenerate() {
           </button>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || routeNotReady}
             className="text-sm font-semibold text-white bg-brand-red px-4 py-2.5 rounded-lg hover:bg-brand-red/90 disabled:opacity-50"
           >
             {submitting ? t.adminJadwalPage.menggenerate : t.adminJadwalPage.generate}

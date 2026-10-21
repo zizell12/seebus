@@ -42,6 +42,7 @@ export default function AdminJadwalForm() {
   }
 
   const rutePilihanBelumSiap = !isEdit && routeId && options.routes.find((r) => String(r.route_id) === String(routeId))?.siap_dipakai === false
+  const routeProblems = options.routes.find((r) => String(r.route_id) === String(routeId))?.masalah || []
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -95,8 +96,7 @@ export default function AdminJadwalForm() {
 
       {rutePilihanBelumSiap && (
         <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-5">
-          Rute ini belum punya titik pemberhentian (minimal titik awal & akhir), jadi harga belum bisa dihitung. Isi
-          dulu di menu Rute → Titik Pemberhentian sebelum bikin jadwal untuk rute ini.
+          {routeProblems[0] || 'Rute belum siap untuk dijadwalkan.'} Perbaiki di menu Rute → Titik Pemberhentian.
         </div>
       )}
 
@@ -115,7 +115,7 @@ export default function AdminJadwalForm() {
                 {options.routes.map((r) => (
                   <option key={r.route_id} value={r.route_id}>
                     {r.label}
-                    {r.siap_dipakai === false ? ' (belum ada titik pemberhentian)' : ''}
+                    {r.siap_dipakai === false ? ` (${r.masalah?.[0] || 'belum siap'})` : ''}
                   </option>
                 ))}
               </select>

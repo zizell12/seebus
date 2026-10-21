@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Availability;
 use App\Models\Route;
 use App\Models\RouteStop;
+use App\Services\RouteFareCalculator;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -25,6 +28,8 @@ class AdminRouteStopController extends Controller
         return response()->json([
             'data' => $stops->map(fn ($s) => $this->format($s)),
             'sudah_punya_jadwal' => $route->availabilities()->exists(),
+            'masalah' => $route->stopsProblems(),
+            'siap_dipakai' => $route->isReadyForSchedule(),
         ]);
     }
 
@@ -41,7 +46,7 @@ class AdminRouteStopController extends Controller
         $this->pastikanBelumPunyaJadwal($route);
 
         $stopOrderBerikutnya = ($route->stops()->max('stop_order') ?? -1) + 1;
-        $data = $this->validateData($request, $stopOrderBerikutnya);
+        $data = $this->validateData($request, $route, $stopOrderBerikutnya);
 
         $stop = RouteStop::create(array_merge($data, [
             'route_id' => $route->route_id,
@@ -65,7 +70,7 @@ class AdminRouteStopController extends Controller
         $this->pastikanBelumPunyaJadwal($route);
 
         $stop = RouteStop::where('route_id', $route->route_id)->findOrFail($stopId);
-        $data = $this->validateData($request, $stop->stop_order);
+        $data = $this->validateData($request, $route, $stop->stop_order, $stop);
 
         $stop->update($data);
 
@@ -100,6 +105,45 @@ class AdminRouteStopController extends Controller
         return response()->json(['message' => 'Titik pemberhentian berhasil dihapus.']);
     }
 
+    public function updateFare(Request $request, int $routeId, int $stopId): JsonResponse
+    {
+        $route = Route::findOrFail($routeId);
+        $stop = RouteStop::where('route_id', $route->route_id)->findOrFail($stopId);
+        if ((int) $stop->stop_order === 0) {
+            return response()->json([
+                'message' => 'Harga etape tidak dapat diubah untuk titik awal rute.',
+            ], 422);
+        }
+
+        $data = $request->validate([
+            'fare_adult' => 'required|numeric|min:0',
+            'fare_child' => 'required|numeric|min:0',
+            'fare_infant' => 'required|numeric|min:0',
+        ]);
+        $stop->update($data);
+
+        $route->unsetRelation('stops');
+        $jumlahDiperbarui = 0;
+        $hariIni = Carbon::today(config('app.timezone'))->toDateString();
+        $jadwal = Availability::query()
+            ->where('route_id', $route->route_id)
+            ->whereDate('av_date', '>=', $hariIni)
+            ->get();
+
+        foreach ($jadwal as $availability) {
+            $availability->update([
+                'av_price' => RouteFareCalculator::fullRoutePrice($route),
+            ]);
+            $jumlahDiperbarui++;
+        }
+
+        return response()->json([
+            'message' => 'Harga etape berhasil diperbarui.',
+            'data' => $this->format($stop->fresh('station.region')),
+            'jadwal_diperbarui' => $jumlahDiperbarui,
+        ]);
+    }
+
     /**
      * Jadwal (availability + availability_leg) sudah digenerate berdasarkan
      * daftar titik pemberhentian yang ada SAAT jadwal itu dibuat. Kalau titik
@@ -117,7 +161,7 @@ class AdminRouteStopController extends Controller
         }
     }
 
-    private function validateData(Request $request, int $stopOrder): array
+    private function validateData(Request $request, Route $route, int $stopOrder, ?RouteStop $currentStop = null): array
     {
         $rules = [
             'station_id' => 'required|exists:station,station_id',
@@ -135,6 +179,7 @@ class AdminRouteStopController extends Controller
         }
 
         $data = $request->validate($rules);
+        $this->validateStationConsistency($route, $stopOrder, (int) $data['station_id'], $currentStop);
 
         if ($stopOrder === 0) {
             $data['fare_adult'] = null;
@@ -143,6 +188,30 @@ class AdminRouteStopController extends Controller
         }
 
         return $data;
+    }
+
+    private function validateStationConsistency(Route $route, int $stopOrder, int $stationId, ?RouteStop $currentStop = null): void
+    {
+        if ($stopOrder === 0 && (string) $stationId !== (string) $route->origin_station_id) {
+            throw ValidationException::withMessages([
+                'station_id' => ['Titik awal harus menggunakan stasiun asal rute.'],
+            ]);
+        }
+
+        $stops = $route->stops()->get();
+        foreach ($stops as $stop) {
+            if ($currentStop && (int) $stop->route_stop_id === (int) $currentStop->route_stop_id) {
+                continue;
+            }
+            if (
+                abs((int) $stop->stop_order - $stopOrder) === 1
+                && (string) $stop->station_id === (string) $stationId
+            ) {
+                throw ValidationException::withMessages([
+                    'station_id' => ['Stasiun tidak boleh sama dengan titik pemberhentian yang berurutan.'],
+                ]);
+            }
+        }
     }
 
     private function format(RouteStop $stop): array

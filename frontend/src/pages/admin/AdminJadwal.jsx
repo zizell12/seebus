@@ -182,7 +182,7 @@ export default function AdminJadwal() {
   const resetFilter = () => {
     setTanggal('')
     setRouteId('')
-    setBusTypeId('')
+    setBusUnitId('')
     setStatus('')
     setPage(1)
   }
@@ -196,11 +196,39 @@ export default function AdminJadwal() {
 
   const handleToggleStatus = async (item) => {
     setActionLoading(item.availability_id)
+    setError('')
     try {
       if (item.av_status === 'active') {
-        await api.nonaktifkanJadwal(item.availability_id)
+        try {
+          const result = await api.nonaktifkanJadwal(item.availability_id)
+          setNotice(result.dibatalkan
+            ? `Jadwal dinonaktifkan; ${result.dibatalkan} booking dibatalkan.`
+            : 'Jadwal berhasil dinonaktifkan.')
+        } catch (err) {
+          const bookingCount = err.responseData?.jumlah_booking_aktif
+          if (err.status !== 409 || !bookingCount) throw err
+
+          const confirmed = window.confirm(
+            `Jadwal ini memiliki ${bookingCount} booking aktif (${err.responseData.jumlah_paid} sudah dibayar, ${err.responseData.jumlah_pending} masih pending). Nonaktifkan jadwal dan batalkan semua booking tersebut?`,
+          )
+          if (!confirmed) return
+
+          try {
+            const result = await api.nonaktifkanJadwal(item.availability_id, { batalkan_booking: true })
+            setNotice(`Jadwal dinonaktifkan; ${result.dibatalkan || 0} booking dibatalkan.`)
+          } catch (retryError) {
+            const failedCodes = retryError.responseData?.gagal
+            if (retryError.status === 422 && Array.isArray(failedCodes)) {
+              await muatJadwal()
+              setError(`${retryError.message} Gagal membatalkan: ${failedCodes.join(', ')}. ${retryError.responseData.dibatalkan || 0} booking berhasil dibatalkan.`)
+              return
+            }
+            throw retryError
+          }
+        }
       } else {
         await api.ubahJadwal(item.availability_id, { av_status: 'active' })
+        setNotice('Jadwal berhasil diaktifkan.')
       }
       await muatJadwal()
     } catch (err) {

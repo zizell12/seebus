@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
+use App\Support\CsvSafe;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,17 +29,17 @@ class AdminManifestController extends Controller
 
             foreach ($manifest['ringkasan_titik'] as $stop) {
                 fputcsv($stream, [
-                    'Ringkasan titik', $stop['nama'], $stop['jumlah_naik'], $stop['jumlah_turun'],
+                    CsvSafe::cell('Ringkasan titik'), CsvSafe::cell($stop['nama']), $stop['jumlah_naik'], $stop['jumlah_turun'],
                     '', '', '', '', '', '', '', '', '',
                 ]);
             }
 
             foreach ($manifest['penumpang'] as $passenger) {
                 fputcsv($stream, [
-                    'Penumpang', '', '', '', $passenger['booking_id'], $passenger['bk_code'],
-                    $passenger['ps_name'], $passenger['ps_category'], $passenger['label_kursi'],
-                    $passenger['kontak_nama'], $passenger['kontak_telepon'],
-                    $passenger['naik_dari'], $passenger['turun_di'],
+                    CsvSafe::cell('Penumpang'), '', '', '', $passenger['booking_id'], CsvSafe::cell($passenger['bk_code']),
+                    CsvSafe::cell($passenger['ps_name']), CsvSafe::cell($passenger['ps_category']), CsvSafe::cell($passenger['label_kursi']),
+                    CsvSafe::cell($passenger['kontak_nama']), CsvSafe::cell($passenger['kontak_telepon']),
+                    CsvSafe::cell($passenger['naik_dari']), CsvSafe::cell($passenger['turun_di']),
                 ]);
             }
             fclose($stream);

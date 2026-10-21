@@ -37,7 +37,8 @@ class JadwalController extends Controller
             ->whereHas('route.destinationStation.region', function ($q) use ($tujuan) {
                 $q->where('rg_city', $tujuan);
             })
-            ->where('av_date', $request->tanggal)
+            ->whereHas('busUnit', fn ($q) => $q->where('is_active', true))
+            ->whereDate('av_date', $request->tanggal)
             ->where('av_status', 'active')
             ->orderBy('av_time')
             ->get();

@@ -11,6 +11,7 @@ const MENU_GROUPS = [
       { to: '/admin/booking', end: false, icon: TicketCheck, labelKey: 'menuBooking' },
       { to: '/admin/rekap', end: false, icon: BarChart3, labelKey: 'menuRekap' },
       { to: '/admin/jadwal', end: false, icon: CalendarClock, labelKey: 'menuJadwal' },
+      { to: '/admin/jadwal-tetap', end: false, icon: CalendarClock, labelKey: 'menuJadwalTetap' },
       { to: '/admin/tipe-bus', end: false, icon: BusFront, labelKey: 'menuTipeBus' },
       { to: '/admin/armada', end: false, icon: Bus, labelKey: 'menuArmada' },
       { to: '/admin/rute', end: false, icon: RouteIcon, labelKey: 'menuRute' },

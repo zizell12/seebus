@@ -83,8 +83,25 @@ class AdminRouteController extends Controller
     {
         $route = Route::findOrFail($id);
 
-        $data = $this->validateData($request, $route->route_id);
+        $data = $this->validateData($request, $route->route_id, checkDuplicate: false);
 
+        $asalBerubah = (string) $data['origin_station_id'] !== (string) $route->origin_station_id;
+        $tujuanBerubah = (string) $data['destination_station_id'] !== (string) $route->destination_station_id;
+        if ($asalBerubah || $tujuanBerubah) {
+            if ($route->availabilities()->exists()) {
+                return response()->json([
+                    'message' => 'Asal dan tujuan rute tidak dapat diubah karena rute ini sudah punya jadwal.',
+                ], 422);
+            }
+
+            if ($route->stops()->exists()) {
+                return response()->json([
+                    'message' => 'Hapus titik pemberhentian dulu sebelum mengubah asal atau tujuan rute.',
+                ], 422);
+            }
+        }
+
+        $this->validateRoutePair($data, $route->route_id);
         $route->update($data);
 
         return response()->json([
@@ -121,7 +138,7 @@ class AdminRouteController extends Controller
      * supaya pengecekan "rute duplikat" tidak menganggap rute yang sedang
      * diedit itu sendiri sebagai duplikat.
      */
-    private function validateData(Request $request, ?int $routeIdSaatIni = null): array
+    private function validateData(Request $request, ?int $routeIdSaatIni = null, bool $checkDuplicate = true): array
     {
         $data = $request->validate([
             'origin_station_id' => 'required|exists:station,station_id',
@@ -136,6 +153,15 @@ class AdminRouteController extends Controller
             ]);
         }
 
+        if ($checkDuplicate) {
+            $this->validateRoutePair($data, $routeIdSaatIni);
+        }
+
+        return $data;
+    }
+
+    private function validateRoutePair(array $data, ?int $routeIdSaatIni): void
+    {
         $sudahAda = Route::where('origin_station_id', $data['origin_station_id'])
             ->where('destination_station_id', $data['destination_station_id'])
             ->when($routeIdSaatIni, fn ($q) => $q->where('route_id', '!=', $routeIdSaatIni))
@@ -146,8 +172,6 @@ class AdminRouteController extends Controller
                 'destination_station_id' => ['Rute dengan terminal asal dan tujuan yang sama sudah ada.'],
             ]);
         }
-
-        return $data;
     }
 
     private function formatRoute(Route $route): array

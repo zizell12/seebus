@@ -7,6 +7,7 @@ use App\Models\BusType;
 use App\Models\BusUnit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AdminBusUnitController extends Controller
 {
@@ -89,7 +90,7 @@ class AdminBusUnitController extends Controller
     {
         $busUnit = BusUnit::findOrFail($id);
 
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $busUnit);
         if ((int) $data['bu_capacity'] !== (int) $busUnit->bu_capacity && $this->hasUpcomingBookings($busUnit)) {
             return response()->json([
                 'message' => 'Kapasitas armada tidak dapat diubah karena memiliki jadwal mendatang dengan booking pending atau paid.',
@@ -137,15 +138,32 @@ class AdminBusUnitController extends Controller
         ]);
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?BusUnit $busUnit = null): array
     {
+        $plateNumber = $request->input('bu_plate_number');
+        if (is_string($plateNumber)) {
+            $normalizedPlate = mb_strtoupper(preg_replace('/\s+/', ' ', trim($plateNumber)));
+            $request->merge([
+                'bu_plate_number' => $normalizedPlate === '' ? null : $normalizedPlate,
+            ]);
+        }
+
         $data = $request->validate([
             'bus_type_id' => 'required|integer|exists:bus_type,bus_type_id',
-            'bu_code' => 'required|string|max:100',
-            'bu_plate_number' => 'nullable|string|max:20',
+            'bu_code' => [
+                'required', 'string', 'max:100',
+                Rule::unique('bus_unit', 'bu_code')->ignore($busUnit?->bus_unit_id, 'bus_unit_id'),
+            ],
+            'bu_plate_number' => [
+                'nullable', 'string', 'max:20',
+                Rule::unique('bus_unit', 'bu_plate_number')->ignore($busUnit?->bus_unit_id, 'bus_unit_id'),
+            ],
             'bu_capacity' => 'required|integer|min:1|max:100',
             'bu_facilities' => 'array',
             'bu_facilities.*' => 'string|max:100',
+        ], [
+            'bu_code.unique' => 'Kode armada sudah dipakai.',
+            'bu_plate_number.unique' => 'Plat nomor sudah dipakai.',
         ]);
 
         $data['bu_facilities'] = $data['bu_facilities'] ?? [];

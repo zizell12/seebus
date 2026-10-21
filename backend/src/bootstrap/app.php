@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -15,7 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'admin' => EnsureUserIsAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -28,5 +29,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // bayar) tidak akan pernah lepas sendiri. Lihat
         // app/Console/Commands/ReleaseExpiredHolds.php.
         $schedule->command('bookings:release-expired-holds')->everyMinute();
+        $schedule->command('jadwal:generate-tetap')->dailyAt('01:00')->withoutOverlapping();
     })
     ->create();

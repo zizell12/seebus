@@ -16,6 +16,8 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminJadwal from './pages/admin/AdminJadwal'
 import AdminJadwalForm from './pages/admin/AdminJadwalForm'
 import AdminJadwalGenerate from './pages/admin/AdminJadwalGenerate'
+import AdminJadwalTetap from './pages/admin/AdminJadwalTetap'
+import AdminJadwalTetapForm from './pages/admin/AdminJadwalTetapForm'
 import AdminTipeBus from './pages/admin/AdminTipeBus'
 import AdminTipeBusForm from './pages/admin/AdminTipeBusForm'
 import AdminArmada from './pages/admin/AdminArmada'
@@ -86,6 +88,9 @@ export default function App() {
         <Route path="/admin/jadwal/tambah" element={<AdminJadwalForm />} />
         <Route path="/admin/jadwal/generate" element={<AdminJadwalGenerate />} />
         <Route path="/admin/jadwal/edit/:id" element={<AdminJadwalForm />} />
+        <Route path="/admin/jadwal-tetap" element={<AdminJadwalTetap />} />
+        <Route path="/admin/jadwal-tetap/tambah" element={<AdminJadwalTetapForm />} />
+        <Route path="/admin/jadwal-tetap/edit/:id" element={<AdminJadwalTetapForm />} />
         <Route path="/admin/tipe-bus" element={<AdminTipeBus />} />
         <Route path="/admin/tipe-bus/tambah" element={<AdminTipeBusForm />} />
         <Route path="/admin/tipe-bus/edit/:id" element={<AdminTipeBusForm />} />

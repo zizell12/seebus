@@ -14,7 +14,10 @@ async function handleResponse(res) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     const message = data?.message || Object.values(data?.errors || {})[0]?.[0] || 'Terjadi kesalahan'
-    throw new Error(message)
+    const error = new Error(message)
+    error.status = res.status
+    error.responseData = data
+    throw error
   }
   return data
 }
@@ -162,6 +165,12 @@ export const api = {
     })
     return handleResponse(res)
   },
+  getAdminPersiapan: async () => {
+    const res = await apiFetch(`${API_URL}/admin/persiapan`, {
+      headers: { ...authHeaders() },
+    })
+    return handleResponse(res)
+  },
   tandaiPesanDibaca: async (id) => {
     const res = await apiFetch(`${API_URL}/admin/pesan/${id}/baca`, {
       method: 'PATCH',
@@ -202,6 +211,50 @@ export const api = {
     })
     return handleResponse(res)
   },
+  getAdminJadwalTetap: async () => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-tetap`, {
+      headers: { ...authHeaders() },
+    })
+    return handleResponse(res)
+  },
+  tambahJadwalTetap: async (payload) => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-tetap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  ubahJadwalTetap: async (id, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-tetap/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
+  toggleJadwalTetap: async (id) => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-tetap/${id}/status`, {
+      method: 'PATCH',
+      headers: { ...authHeaders() },
+    })
+    return handleResponse(res)
+  },
+  hapusJadwalTetap: async (id) => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-tetap/${id}`, {
+      method: 'DELETE',
+      headers: { ...authHeaders() },
+    })
+    return handleResponse(res)
+  },
+  generateJadwalTetap: async (payload) => {
+    const res = await apiFetch(`${API_URL}/admin/jadwal-tetap/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    return handleResponse(res)
+  },
   tambahJadwal: async (payload) => {
     const res = await apiFetch(`${API_URL}/admin/jadwal`, {
       method: 'POST',
@@ -235,12 +288,11 @@ export const api = {
     })
     return handleResponse(res)
   },
-  nonaktifkanJadwal: async (id) => {
+  nonaktifkanJadwal: async (id, payload = {}) => {
     const res = await apiFetch(`${API_URL}/admin/jadwal/${id}`, {
       method: 'DELETE',
-      headers: {
-        ...authHeaders(),
-      },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
     })
     return handleResponse(res)
   },
@@ -410,11 +462,14 @@ export const api = {
     })
     return handleResponse(res)
   },
-  getBookingRekap: async ({ mode, dari, sampai } = {}) => {
+  getBookingRekap: async ({ mode, kelompok, dari, sampai, company_id, route_id } = {}) => {
     const params = new URLSearchParams()
     if (mode) params.set('mode', mode)
+    if (kelompok) params.set('kelompok', kelompok)
     if (dari) params.set('dari', dari)
     if (sampai) params.set('sampai', sampai)
+    if (company_id) params.set('company_id', company_id)
+    if (route_id) params.set('route_id', route_id)
     const res = await apiFetch(`${API_URL}/admin/booking/rekap?${params}`, {
       headers: {
         ...authHeaders(),
@@ -422,22 +477,52 @@ export const api = {
     })
     return handleResponse(res)
   },
-  exportBookingRekap: async ({ mode, dari, sampai } = {}) => {
+  exportBookingRekap: async ({ mode, kelompok, dari, sampai, company_id, route_id } = {}) => {
     const params = new URLSearchParams()
     if (mode) params.set('mode', mode)
+    if (kelompok) params.set('kelompok', kelompok)
     if (dari) params.set('dari', dari)
     if (sampai) params.set('sampai', sampai)
+    if (company_id) params.set('company_id', company_id)
+    if (route_id) params.set('route_id', route_id)
     const res = await apiFetch(`${API_URL}/admin/booking/export?${params}`, {
       headers: {
         ...authHeaders(),
       },
     })
-    if (!res.ok) throw new Error('Gagal mengekspor laporan.')
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const message = data?.message || Object.values(data?.errors || {})[0]?.[0] || 'Gagal mengunduh CSV rekap.'
+      throw new Error(message)
+    }
     const blob = await res.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `laporan-penjualan-${mode || 'harian'}.csv`
+    a.download = `laporan-penjualan-${kelompok || 'periode'}-${dari || 'awal'}_${sampai || 'akhir'}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
+  exportSetoranPO: async ({ company_id, dari, sampai, route_id }) => {
+    const params = new URLSearchParams({ company_id: String(company_id) })
+    if (dari) params.set('dari', dari)
+    if (sampai) params.set('sampai', sampai)
+    if (route_id) params.set('route_id', route_id)
+    const res = await apiFetch(`${API_URL}/admin/booking/setoran-export?${params}`, {
+      headers: { ...authHeaders() },
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const message = data?.message || Object.values(data?.errors || {})[0]?.[0] || 'Gagal mengunduh rincian setoran.'
+      throw new Error(message)
+    }
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `setoran-po-${company_id}-${dari || 'awal'}_${sampai || 'akhir'}.csv`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -529,6 +614,14 @@ export const api = {
       headers: {
         ...authHeaders(),
       },
+    })
+    return handleResponse(res)
+  },
+  koreksiRouteStopFare: async (routeId, stopId, payload) => {
+    const res = await apiFetch(`${API_URL}/admin/route/${routeId}/stops/${stopId}/fare`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload),
     })
     return handleResponse(res)
   },

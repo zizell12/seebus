@@ -10,7 +10,10 @@ import {
   RefreshCcw,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { api } from '../../utils/api'
 import { useLanguage } from '../../context/LanguageContext'
 
@@ -102,6 +105,21 @@ export default function AdminDashboard() {
   const [cariAktif, setCariAktif] = useState('')
   const [page, setPage] = useState(1)
   const [actionLoading, setActionLoading] = useState(null)
+  const [persiapan, setPersiapan] = useState(null)
+  const [persiapanError, setPersiapanError] = useState('')
+  const [persiapanLoading, setPersiapanLoading] = useState(true)
+
+  const muatPersiapan = useCallback(async () => {
+    setPersiapanLoading(true)
+    setPersiapanError('')
+    try {
+      setPersiapan(await api.getAdminPersiapan())
+    } catch (err) {
+      setPersiapanError(err.message)
+    } finally {
+      setPersiapanLoading(false)
+    }
+  }, [])
 
   const muatPesan = useCallback(async () => {
     setLoading(true)
@@ -119,6 +137,10 @@ export default function AdminDashboard() {
   useEffect(() => {
     muatPesan()
   }, [muatPesan])
+
+  useEffect(() => {
+    muatPersiapan()
+  }, [muatPersiapan])
 
   const handleCariSubmit = (e) => {
     e.preventDefault()
@@ -167,6 +189,64 @@ export default function AdminDashboard() {
         <h1 className="text-xl md:text-2xl font-bold text-navy-900">{t.adminPage.judul}</h1>
         <p className="text-sm text-gray-500 mt-1">{t.adminPage.subJudul}</p>
       </div>
+
+      <section className="card mb-8">
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-navy-900">Persiapan operasional</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {persiapan?.siap_jual ? 'Semua persiapan utama sudah siap untuk penjualan.' : 'Periksa hal yang masih perlu disiapkan.'}
+            </p>
+          </div>
+          {!persiapanLoading && !persiapanError && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+              persiapan?.siap_jual ? 'bg-brand-teal/10 text-brand-teal' : 'bg-amber-50 text-amber-800'
+            }`}>
+              {persiapan?.siap_jual ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+              {persiapan?.siap_jual ? 'Siap jual' : 'Perlu perhatian'}
+            </span>
+          )}
+        </div>
+        {persiapanLoading && <p className="text-sm text-gray-400">Memuat persiapan...</p>}
+        {!persiapanLoading && persiapanError && (
+          <div className="flex items-center justify-between gap-3 text-sm text-brand-red">
+            <span>{persiapanError}</span>
+            <button onClick={muatPersiapan} className="font-semibold underline">Coba lagi</button>
+          </div>
+        )}
+        {!persiapanLoading && !persiapanError && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(persiapan?.data || []).map((item) => (
+              <div key={item.kunci} className="rounded-lg border border-gray-100 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-navy-900">{item.label}</p>
+                    <p className="text-xs text-gray-500 mt-1">{item.ringkasan}</p>
+                  </div>
+                  <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                    item.status === 'ok' ? 'bg-brand-teal/10 text-brand-teal' :
+                      item.status === 'peringatan' ? 'bg-amber-50 text-amber-800' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {item.status === 'ok' ? 'Siap' : item.status === 'peringatan' ? 'Perlu dicek' : 'Belum tersedia'}
+                  </span>
+                </div>
+                {item.detail?.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs text-amber-800">
+                    {item.detail.map((detail) => (
+                      <li key={detail.route_id}>
+                        {detail.label}: {detail.masalah?.[0]}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link to={item.tautan} className="inline-block mt-2 text-xs font-semibold text-navy-900 underline">
+                  Kelola {item.label.toLowerCase()}
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard icon={Inbox} label={t.adminPage.statTotal} value={stats.total} accent="bg-navy-900/5 text-navy-900" />

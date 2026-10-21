@@ -4,11 +4,18 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Availability;
+use App\Models\Booking;
 use App\Models\BusUnit;
 use App\Models\Route;
+use App\Mail\BookingCancelledMail;
+use App\Services\BookingCancellationService;
 use App\Services\AvailabilityGenerator;
+use App\Services\BusUnitScheduleConflict;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminJadwalController extends Controller
 {
@@ -55,7 +62,6 @@ class AdminJadwalController extends Controller
     public function options(): JsonResponse
     {
         $routes = Route::with(['originStation.region', 'destinationStation.region'])
-            ->withCount('stops')
             ->get()
             ->map(fn ($route) => [
                 'route_id' => $route->route_id,
@@ -66,9 +72,8 @@ class AdminJadwalController extends Controller
                     $route->destinationStation->stn_name,
                     $route->destinationStation->region->rg_city,
                 ),
-                // Jadwal tidak bisa dibuat kalau titik pemberhentiannya belum
-                // diisi sama sekali -- tanpa ini harga tidak bisa dihitung.
-                'siap_dipakai' => $route->stops_count >= 2,
+                'siap_dipakai' => $route->isReadyForSchedule(),
+                'masalah' => $route->stopsProblems(),
             ]);
 
         $busUnits = BusUnit::with('busType.company')
@@ -117,13 +122,24 @@ class AdminJadwalController extends Controller
 
         $route = Route::findOrFail($data['route_id']);
 
-        if ($route->stops()->count() < 2) {
+        if (! $route->isReadyForSchedule()) {
             return response()->json([
-                'message' => 'Rute ini belum punya titik pemberhentian (minimal titik awal & akhir). Lengkapi dulu di menu Rute sebelum bikin jadwal.',
+                'message' => $route->stopsProblems()[0],
             ], 422);
         }
 
         $busUnit = BusUnit::findOrFail($data['bus_unit_id']);
+
+        if (BusUnitScheduleConflict::conflicts(
+            (int) $busUnit->bus_unit_id,
+            $data['av_date'],
+            $data['av_time'].':00',
+            routeId: (int) $route->route_id,
+        )) {
+            return response()->json([
+                'message' => 'Armada ini sudah dijadwalkan di keberangkatan lain pada waktu yang berimpit.',
+            ], 422);
+        }
 
         $availability = AvailabilityGenerator::createAvailability(
             $route,
@@ -159,8 +175,8 @@ class AdminJadwalController extends Controller
 
         // Batas rentang supaya admin tidak tidak sengaja generate ribuan
         // baris (mis. salah pilih tanggal selesai tahun depan).
-        $mulai = \Carbon\Carbon::parse($data['tanggal_mulai']);
-        $selesai = \Carbon\Carbon::parse($data['tanggal_selesai']);
+        $mulai = Carbon::parse($data['tanggal_mulai']);
+        $selesai = Carbon::parse($data['tanggal_selesai']);
         if ($mulai->diffInDays($selesai) > 90) {
             return response()->json([
                 'message' => 'Rentang tanggal maksimal 90 hari sekali generate.',
@@ -169,9 +185,9 @@ class AdminJadwalController extends Controller
 
         $route = Route::findOrFail($data['route_id']);
 
-        if ($route->stops()->count() < 2) {
+        if (! $route->isReadyForSchedule()) {
             return response()->json([
-                'message' => 'Rute ini belum punya titik pemberhentian (minimal titik awal & akhir). Lengkapi dulu di menu Rute sebelum generate jadwal.',
+                'message' => $route->stopsProblems()[0],
             ], 422);
         }
 
@@ -179,6 +195,7 @@ class AdminJadwalController extends Controller
 
         $dibuat = 0;
         $dilewati = 0;
+        $bentrok = 0;
 
         for ($tgl = $mulai->copy(); $tgl->lte($selesai); $tgl->addDay()) {
             if (! in_array((int) $tgl->dayOfWeek, $data['hari'], true)) {
@@ -194,6 +211,18 @@ class AdminJadwalController extends Controller
 
                 if ($sudahAda) {
                     $dilewati++;
+
+                    continue;
+                }
+
+                if (BusUnitScheduleConflict::conflicts(
+                    (int) $busUnit->bus_unit_id,
+                    $tgl->toDateString(),
+                    $jam.':00',
+                    routeId: (int) $route->route_id,
+                )) {
+                    $bentrok++;
+
                     continue;
                 }
 
@@ -208,9 +237,10 @@ class AdminJadwalController extends Controller
         }
 
         return response()->json([
-            'message' => "Berhasil generate {$dibuat} jadwal baru.".($dilewati ? " ({$dilewati} dilewati karena sudah ada)." : ''),
+            'message' => "Berhasil generate {$dibuat} jadwal baru; {$dilewati} dilewati karena sudah ada dan {$bentrok} dilewati karena bentrok.",
             'dibuat' => $dibuat,
             'dilewati' => $dilewati,
+            'bentrok' => $bentrok,
         ], 201);
     }
 
@@ -230,8 +260,63 @@ class AdminJadwalController extends Controller
             'av_status' => 'sometimes|in:active,inactive',
         ]);
 
-        if (isset($data['av_time'])) {
-            $data['av_time'] = $data['av_time'].':00';
+        $jamBerubah = isset($data['av_time'])
+            && $data['av_time'].':00' !== (string) $availability->av_time;
+        if ($jamBerubah) {
+            $bookingsAktif = $this->activeBookings($availability);
+            if ($bookingsAktif->isNotEmpty()) {
+                return response()->json([
+                    'message' => "Jam tidak dapat diubah karena sudah ada {$bookingsAktif->count()} booking aktif. Batalkan booking terkait dulu.",
+                ], 409);
+            }
+
+            if (BusUnitScheduleConflict::conflicts(
+                (int) $availability->bus_unit_id,
+                $availability->av_date->toDateString(),
+                $data['av_time'].':00',
+                ignoreAvailabilityId: (int) $availability->availability_id,
+                routeId: (int) $availability->route_id,
+            )) {
+                return response()->json([
+                    'message' => 'Armada ini sudah dijadwalkan di keberangkatan lain pada waktu yang berimpit.',
+                ], 422);
+            }
+
+            $data['av_time'] .= ':00';
+        }
+
+        $dibatalkan = 0;
+        if (($data['av_status'] ?? null) === 'inactive') {
+            $result = $this->deactivate($request, $availability);
+            if ($result instanceof JsonResponse) {
+                return $result;
+            }
+            $dibatalkan = $result;
+            $data['av_status'] = 'inactive';
+        }
+
+        if (($data['av_status'] ?? null) === 'active' && $availability->av_status === 'inactive') {
+            $departure = Carbon::parse(
+                $availability->av_date->toDateString().' '.($data['av_time'] ?? $availability->av_time),
+                config('app.timezone'),
+            );
+            if ($departure->isPast()) {
+                return response()->json([
+                    'message' => 'Jadwal yang waktu berangkatnya sudah lewat tidak dapat diaktifkan kembali.',
+                ], 422);
+            }
+
+            if (BusUnitScheduleConflict::conflicts(
+                (int) $availability->bus_unit_id,
+                $availability->av_date->toDateString(),
+                $data['av_time'] ?? (string) $availability->av_time,
+                ignoreAvailabilityId: (int) $availability->availability_id,
+                routeId: (int) $availability->route_id,
+            )) {
+                return response()->json([
+                    'message' => 'Armada ini sudah dijadwalkan di keberangkatan lain pada waktu yang berimpit.',
+                ], 422);
+            }
         }
 
         $availability->update($data);
@@ -239,6 +324,7 @@ class AdminJadwalController extends Controller
         return response()->json([
             'message' => 'Jadwal berhasil diperbarui.',
             'data' => $availability,
+            'dibatalkan' => $dibatalkan,
         ]);
     }
 
@@ -249,10 +335,103 @@ class AdminJadwalController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $availability = Availability::findOrFail($id);
+        $result = $this->deactivate(request(), $availability);
+        if ($result instanceof JsonResponse) {
+            return $result;
+        }
         $availability->update(['av_status' => 'inactive']);
 
         return response()->json([
             'message' => 'Jadwal berhasil dinonaktifkan.',
+            'dibatalkan' => $result,
         ]);
+    }
+
+    private function activeBookings(Availability $availability)
+    {
+        $departure = Carbon::parse(
+            $availability->av_date->toDateString().' '.$availability->av_time,
+            config('app.timezone'),
+        );
+        if ($departure->isPast()) {
+            return collect();
+        }
+
+        return $availability->bookings()
+            ->where(function ($query) {
+                $query->where('bk_status', 'paid')
+                    ->orWhere(function ($query) {
+                        $query->where('bk_status', 'pending')
+                            ->where('bk_hold_until', '>', Carbon::now(config('app.timezone')));
+                    });
+            })
+            ->with('contact')
+            ->get();
+    }
+
+    private function deactivate(Request $request, Availability $availability): int|JsonResponse
+    {
+        $bookings = $this->activeBookings($availability);
+        if ($bookings->isEmpty()) {
+            return 0;
+        }
+
+        $jumlahPaid = $bookings->where('bk_status', 'paid')->count();
+        $jumlahPending = $bookings->where('bk_status', 'pending')->count();
+        if (! $request->boolean('batalkan_booking')) {
+            return response()->json([
+                'message' => "Jadwal memiliki {$bookings->count()} booking aktif. Konfirmasi pembatalan booking terlebih dahulu.",
+                'jumlah_booking_aktif' => $bookings->count(),
+                'jumlah_paid' => $jumlahPaid,
+                'jumlah_pending' => $jumlahPending,
+            ], 409);
+        }
+
+        $dibatalkan = 0;
+        $gagal = [];
+        foreach ($bookings as $booking) {
+            $sudahDibayar = $booking->bk_status === 'paid';
+            try {
+                (new BookingCancellationService)->cancel(
+                    $booking,
+                    'Jadwal dibatalkan oleh operator',
+                    'penuh',
+                    (int) $request->user()->user_id,
+                );
+                $dibatalkan++;
+            } catch (\Throwable $e) {
+                $gagal[] = $booking->bk_code;
+                Log::error('Gagal membatalkan booking saat jadwal dinonaktifkan', [
+                    'booking_id' => $booking->booking_id,
+                    'bk_code' => $booking->bk_code,
+                    'error' => $e->getMessage(),
+                ]);
+
+                continue;
+            }
+
+            $bookingTerbaru = $booking->fresh();
+            $email = $bookingTerbaru?->contact?->ct_email;
+            if ($email && $email !== 'customer@example.com') {
+                try {
+                    Mail::to($email)->send(new BookingCancelledMail($bookingTerbaru, $sudahDibayar));
+                } catch (\Throwable $e) {
+                    Log::error('Gagal mengirim email pembatalan booking', [
+                        'booking_id' => $booking->booking_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        if ($gagal !== []) {
+            return response()->json([
+                'message' => 'Sebagian booking gagal dibatalkan. Jadwal tetap aktif.',
+                'gagal' => $gagal,
+                'dibatalkan' => $dibatalkan,
+            ], 422);
+        }
+
+        return $dibatalkan;
     }
 }

@@ -4,7 +4,9 @@ use App\Http\Controllers\Api\Admin\AdminBookingController;
 use App\Http\Controllers\Api\Admin\AdminBusTypeController;
 use App\Http\Controllers\Api\Admin\AdminBusUnitController;
 use App\Http\Controllers\Api\Admin\AdminJadwalController;
+use App\Http\Controllers\Api\Admin\AdminJadwalTetapController;
 use App\Http\Controllers\Api\Admin\AdminManifestController;
+use App\Http\Controllers\Api\Admin\AdminPersiapanController;
 use App\Http\Controllers\Api\Admin\AdminPesanController;
 use App\Http\Controllers\Api\Admin\AdminRouteController;
 use App\Http\Controllers\Api\Admin\AdminRouteStopController;
@@ -29,12 +31,20 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Panel admin: hanya bisa diakses user yang sudah login DAN usr_role = admin
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::get('/persiapan', [AdminPersiapanController::class, 'index']);
     Route::get('/jadwal-options', [AdminJadwalController::class, 'options']);
     Route::get('/jadwal', [AdminJadwalController::class, 'index']);
     Route::post('/jadwal', [AdminJadwalController::class, 'store']);
     Route::post('/jadwal/generate', [AdminJadwalController::class, 'generate']);
     Route::put('/jadwal/{id}', [AdminJadwalController::class, 'update']);
     Route::delete('/jadwal/{id}', [AdminJadwalController::class, 'destroy']);
+
+    Route::get('/jadwal-tetap', [AdminJadwalTetapController::class, 'index']);
+    Route::post('/jadwal-tetap', [AdminJadwalTetapController::class, 'store']);
+    Route::post('/jadwal-tetap/generate', [AdminJadwalTetapController::class, 'generate']);
+    Route::put('/jadwal-tetap/{id}', [AdminJadwalTetapController::class, 'update'])->whereNumber('id');
+    Route::patch('/jadwal-tetap/{id}/status', [AdminJadwalTetapController::class, 'toggleStatus'])->whereNumber('id');
+    Route::delete('/jadwal-tetap/{id}', [AdminJadwalTetapController::class, 'destroy'])->whereNumber('id');
 
     Route::get('/pesan', [AdminPesanController::class, 'index']);
     Route::patch('/pesan/{id}/baca', [AdminPesanController::class, 'tandaiDibaca']);
@@ -56,6 +66,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/booking', [AdminBookingController::class, 'index']);
     Route::get('/booking/rekap', [AdminBookingController::class, 'rekap']);
     Route::get('/booking/export', [AdminBookingController::class, 'export']);
+    Route::get('/booking/setoran-export', [AdminBookingController::class, 'setoranExport']);
     Route::get('/manifest/{availabilityId}/csv', [AdminManifestController::class, 'export'])->whereNumber('availabilityId');
     Route::get('/manifest/{availabilityId}', [AdminManifestController::class, 'show'])->whereNumber('availabilityId');
     Route::get('/booking/{bookingId}', [AdminBookingController::class, 'show'])->whereNumber('bookingId');
@@ -64,13 +75,14 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/route-options', [AdminRouteController::class, 'options']);
     Route::get('/route', [AdminRouteController::class, 'index']);
     Route::post('/route', [AdminRouteController::class, 'store']);
-    Route::put('/route/{id}', [AdminRouteController::class, 'update']);
-    Route::delete('/route/{id}', [AdminRouteController::class, 'destroy']);
+    Route::put('/route/{id}', [AdminRouteController::class, 'update'])->whereNumber('id');
+    Route::delete('/route/{id}', [AdminRouteController::class, 'destroy'])->whereNumber('id');
 
-    Route::get('/route/{routeId}/stops', [AdminRouteStopController::class, 'index']);
-    Route::post('/route/{routeId}/stops', [AdminRouteStopController::class, 'store']);
-    Route::put('/route/{routeId}/stops/{stopId}', [AdminRouteStopController::class, 'update']);
-    Route::delete('/route/{routeId}/stops/{stopId}', [AdminRouteStopController::class, 'destroy']);
+    Route::get('/route/{routeId}/stops', [AdminRouteStopController::class, 'index'])->whereNumber('routeId');
+    Route::post('/route/{routeId}/stops', [AdminRouteStopController::class, 'store'])->whereNumber('routeId');
+    Route::put('/route/{routeId}/stops/{stopId}', [AdminRouteStopController::class, 'update'])->whereNumber(['routeId', 'stopId']);
+    Route::delete('/route/{routeId}/stops/{stopId}', [AdminRouteStopController::class, 'destroy'])->whereNumber(['routeId', 'stopId']);
+    Route::patch('/route/{routeId}/stops/{stopId}/fare', [AdminRouteStopController::class, 'updateFare'])->whereNumber(['routeId', 'stopId']);
 
     Route::get('/station-options', [AdminStationController::class, 'options']);
     Route::get('/station', [AdminStationController::class, 'index']);

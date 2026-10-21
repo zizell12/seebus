@@ -30,6 +30,8 @@ export default function AdminRuteStops() {
 
   const [stops, setStops] = useState([])
   const [sudahPunyaJadwal, setSudahPunyaJadwal] = useState(false)
+  const [masalahRute, setMasalahRute] = useState([])
+  const [siapDipakai, setSiapDipakai] = useState(false)
   const [options, setOptions] = useState({ stations: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -40,6 +42,8 @@ export default function AdminRuteStops() {
 
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(FORM_KOSONG)
+  const [fareEditingId, setFareEditingId] = useState(null)
+  const [fareForm, setFareForm] = useState({ fare_adult: '', fare_child: '', fare_infant: '' })
 
   const muatData = useCallback(async () => {
     setLoading(true)
@@ -48,6 +52,8 @@ export default function AdminRuteStops() {
       const [resStops, resOptions] = await Promise.all([api.getRouteStops(routeId), api.getAdminRouteOptions()])
       setStops(resStops.data || [])
       setSudahPunyaJadwal(Boolean(resStops.sudah_punya_jadwal))
+      setMasalahRute(resStops.masalah || [])
+      setSiapDipakai(Boolean(resStops.siap_dipakai))
       setOptions(resOptions)
     } catch (err) {
       setError(err.message)
@@ -149,6 +155,35 @@ export default function AdminRuteStops() {
     }
   }
 
+  const mulaiKoreksiFare = (stop) => {
+    setFareEditingId(stop.route_stop_id)
+    setFareForm({
+      fare_adult: stop.fare_adult ?? '',
+      fare_child: stop.fare_child ?? '',
+      fare_infant: stop.fare_infant ?? '',
+    })
+    setError('')
+  }
+
+  const simpanKoreksiFare = async (stop) => {
+    setError('')
+    setSubmitting(true)
+    try {
+      const result = await api.koreksiRouteStopFare(routeId, stop.route_stop_id, {
+        fare_adult: Number(fareForm.fare_adult),
+        fare_child: Number(fareForm.fare_child),
+        fare_infant: Number(fareForm.fare_infant),
+      })
+      setFareEditingId(null)
+      setNotice(`Harga etape diperbarui. ${result.jadwal_diperbarui} cache jadwal diperbarui.`)
+      await muatData()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const stopTerakhirId = stops.length ? stops[stops.length - 1].route_stop_id : null
 
   return (
@@ -196,6 +231,18 @@ export default function AdminRuteStops() {
         </div>
       )}
 
+      {!siapDipakai && masalahRute.length > 0 && (
+        <div className="flex items-start gap-2.5 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Rute belum siap dijadwalkan</p>
+            <ul className="mt-1 list-disc pl-5">
+              {masalahRute.map((problem) => <li key={problem}>{problem}</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {loading && <p className="text-sm text-gray-400 text-center py-10">Memuat data...</p>}
 
       {!loading && (
@@ -233,8 +280,18 @@ export default function AdminRuteStops() {
                         )}
                       </div>
                     </div>
-                    {!sudahPunyaJadwal && (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {stop.stop_order > 0 && (
+                        <button
+                          onClick={() => mulaiKoreksiFare(stop)}
+                          disabled={submitting}
+                          className="text-xs font-semibold text-navy-900 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          Koreksi harga
+                        </button>
+                      )}
+                      {!sudahPunyaJadwal && (
+                        <>
                         <button
                           onClick={() => mulaiEdit(stop)}
                           className="p-2 rounded-lg text-navy-900 border border-gray-200 hover:bg-gray-50"
@@ -252,8 +309,9 @@ export default function AdminRuteStops() {
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
-                      </div>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -337,6 +395,44 @@ export default function AdminRuteStops() {
                       </button>
                     </div>
                   </div>
+                )}
+                {fareEditingId === stop.route_stop_id && (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      simpanKoreksiFare(stop)
+                    }}
+                    className="mt-4 border-t border-gray-100 pt-4"
+                  >
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Koreksi harga etape</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        ['fare_adult', 'Dewasa'],
+                        ['fare_child', 'Anak'],
+                        ['fare_infant', 'Bayi'],
+                      ].map(([field, label]) => (
+                        <label key={field} className="text-xs font-semibold text-gray-500">
+                          {label}
+                          <input
+                            required
+                            type="number"
+                            min="0"
+                            value={fareForm[field]}
+                            onChange={(event) => setFareForm((current) => ({ ...current, [field]: event.target.value }))}
+                            className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-normal text-navy-900 outline-none focus:ring-2 focus:ring-navy-900/20"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-2 mt-3">
+                      <button type="button" onClick={() => setFareEditingId(null)} className="text-xs font-semibold text-gray-500 px-3 py-2">
+                        Batal
+                      </button>
+                      <button type="submit" disabled={submitting} className="text-xs font-semibold text-white bg-navy-900 px-3 py-2 rounded-lg disabled:opacity-50">
+                        {submitting ? 'Menyimpan...' : 'Simpan harga'}
+                      </button>
+                    </div>
+                  </form>
                 )}
               </div>
             )
